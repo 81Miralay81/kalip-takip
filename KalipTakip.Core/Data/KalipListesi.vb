@@ -109,7 +109,7 @@ Public NotInheritable Class KalipListeRepository
             Case "KalipTuru"
                 p.Add(desen)
                 p.Add(desen)
-                Return "(KATLA(COALESCE(COALESCE(t.KalipTuru, kk.KalipTuru), '')) LIKE ? ESCAPE '\' OR EXISTS (SELECT 1 FROM Kalip kx WHERE KATLA(kx.ParcaKodu) = d.A AND KATLA(COALESCE(kx.KalipTuru, '')) LIKE ? ESCAPE '\'))"
+                Return "(KATLA(COALESCE(COALESCE(t.KalipTuru, kk.KalipTuru), '')) LIKE ? ESCAPE '\' OR d.A IN (SELECT A FROM kturu WHERE T LIKE ? ESCAPE '\'))"
             Case "KalipAdi"
                 p.Add(desen)
                 Return "KATLA(COALESCE(COALESCE(t.KalipAdi, kk.ParcaAdi), '')) LIKE ? ESCAPE '\'"
@@ -136,6 +136,21 @@ Public NotInheritable Class KalipListeRepository
         End Select
     End Function
 
+    ''' <summary>Arama kutusundaki açılır liste için benzersiz değerler (şu an: KalipTuru = kalıp tanımı + Kalıp Takip kayıtları + yönetim listesi).</summary>
+    Public Shared Function Degerler(alan As String) As List(Of String)
+        Dim sonuc As New List(Of String)()
+        If alan <> "KalipTuru" Then Return sonuc
+        Dim gorulen As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
+        Dim dt As DataTable = Db.Tablo("SELECT TRIM(KalipTuru) AS D FROM Kalip WHERE KalipTuru IS NOT NULL AND TRIM(KalipTuru) <> '' " &
+                                       "UNION SELECT TRIM(KalipTuru) FROM KalipTanim WHERE KalipTuru IS NOT NULL AND TRIM(KalipTuru) <> '' " &
+                                       "UNION SELECT TRIM(Deger) FROM Liste WHERE Grup = 'KalipTuru' ORDER BY 1")
+        For Each r As DataRow In dt.Rows
+            Dim d As String = Convert.ToString(r("D"))
+            If gorulen.Add(d) Then sonuc.Add(d)
+        Next
+        Return sonuc
+    End Function
+
     ' bicim: 0 = kod/ad içinde geçen, 1 = raf içinde geçen, 2 = raf tam eşleşme, 3 = belirtilen sütunda ara
     Private Shared Function Sorgu(metin As String, bicim As Integer, limit As Integer, izinliBolumler As ICollection(Of String), alan As String) As DataTable
         Dim sql As New StringBuilder()
@@ -143,6 +158,7 @@ Public NotInheritable Class KalipListeRepository
         sql.Append("MAX(CASE WHEN (TashihSayi > 0 OR KATLA(COALESCE(Tur,'')) LIKE 'tash%' OR KATLA(COALESCE(Tur,'')) LIKE 'tamir%') THEN COALESCE(GelisTarihi, BitisTarihi) END) AS SonTashih, SUM(CASE WHEN KATLA(COALESCE(Tur,'')) LIKE 'ilave%' THEN 1 ELSE 0 END) AS Ilave, SUM(CASE WHEN KATLA(COALESCE(Tur,'')) LIKE 'yeni%' THEN 1 ELSE 0 END) AS Yeni, SUM(CASE WHEN KATLA(COALESCE(Tur,'')) LIKE 'hurda%' THEN 1 ELSE 0 END) AS Hurda, MAX(COALESCE(MAX(TashihSayi), 0), SUM(CASE WHEN (TashihSayi > 0 OR KATLA(COALESCE(Tur,'')) LIKE 'tash%' OR KATLA(COALESCE(Tur,'')) LIKE 'tamir%') THEN 1 ELSE 0 END)) AS Tashih, COUNT(*) AS Kayit, MAX(Id) AS SonId ")
         sql.Append("FROM Kalip WHERE ParcaKodu IS NOT NULL AND TRIM(ParcaKodu) <> '' GROUP BY KATLA(ParcaKodu)), ")
         sql.Append("tg AS (SELECT Anahtar AS A, COUNT(*) AS N, MAX(Id) AS SonId FROM TalepKalip GROUP BY Anahtar), ")
+        sql.Append("kturu AS (SELECT DISTINCT KATLA(ParcaKodu) AS A, KATLA(TRIM(KalipTuru)) AS T FROM Kalip WHERE ParcaKodu IS NOT NULL AND KalipTuru IS NOT NULL AND TRIM(KalipTuru) <> ''), ")
         sql.Append("kodlar AS (SELECT A, Kod FROM kg UNION SELECT Anahtar, KalipKodu FROM KalipTanim UNION SELECT Anahtar, KalipKodu FROM TalepKalip ")
         sql.Append("UNION SELECT Anahtar, KalipKodu FROM KalipLokasyon) ")
         sql.Append("SELECT d.A AS Anahtar, d.Kod AS KalipKodu, COALESCE(t.KalipAdi, kk.ParcaAdi) AS KalipAdi, COALESCE(t.KalipTuru, kk.KalipTuru) AS KalipTuru, ")
@@ -168,7 +184,9 @@ Public NotInheritable Class KalipListeRepository
                     kosullar.Add("KATLA(l.Raf) LIKE ? ESCAPE '\'")
                     p.Add(Desen(metin))
                 Case 3
-                    kosullar.Add(AlanKosulu(alan, p, Desen(metin)))
+                    Dim tamEsles As Boolean = alan.EndsWith("|tam", StringComparison.Ordinal)
+                    Dim alanAdi As String = If(tamEsles, alan.Substring(0, alan.Length - 4), alan)
+                    kosullar.Add(AlanKosulu(alanAdi, p, If(tamEsles, LikeKacis(TrMetin.Katla(metin.Trim())), Desen(metin))))
                 Case Else
                     kosullar.Add("KATLA(l.Raf) = ?")
                     p.Add(TrMetin.Katla(metin.Trim()))

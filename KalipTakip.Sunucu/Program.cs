@@ -172,6 +172,10 @@ namespace KalipTakip.Sunucu
 
                 switch (yol)
                 {
+                    case "/api/kl/degerler":
+                        Gerekli(k, Izin.KalipListeGor);
+                        Json(ctx, 200, new { degerler = KalipListeRepository.Degerler(ctx.Request.QueryString["alan"] ?? "") });
+                        break;
                     case "/api/kalip":
                         Gerekli(k, Izin.KalipListeGor);
                         {
