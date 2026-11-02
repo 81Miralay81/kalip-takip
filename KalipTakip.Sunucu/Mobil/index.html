@@ -121,7 +121,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='02.11.2026-S';
+const SURUM='02.11.2026-T';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -684,7 +684,24 @@ function ktForm(s,yenile){
     f[ad]=i;
     return el('div',null,el('label',null,etiket),i);
   }
-  const lt=combo(el('input',{value:v.KalipTuru||''}),ME.kalipTurleri);f.KalipTuru=lt;
+  const ltListe=[];
+  const lt=combo(el('input',{value:v.KalipTuru||''}),ltListe);f.KalipTuru=lt;
+  // kalıp türleri kalıbın sahip bölümüne bağlıdır (Kalıp - Bölüm Ataması); sahip kalıp kodundan bulunur
+  let sahipKod='',sahipDeger='';
+  async function sahipBul(){
+    const kod=((f.ParcaKodu&&f.ParcaKodu.value)||'').trim();
+    if(!kod)return null;
+    if(kod!==sahipKod){sahipKod=kod;sahipDeger='';try{sahipDeger=(await api('/api/kalip/sahip?kod='+encodeURIComponent(kod))).sahip||''}catch(e){}}
+    ltListe.length=0;((ME.kalipTurBolum||{})[String(sahipDeger).toLocaleUpperCase('tr')]||[]).forEach(x=>ltListe.push(x));
+    return sahipDeger;
+  }
+  lt.addEventListener('focus',async()=>{
+    const kodVar=((f.ParcaKodu&&f.ParcaKodu.value)||'').trim();
+    if(!kodVar){bildir('Önce parça kodunu girin; kalıp türü kalıbın sahip bölümüne göre gelir.','h');lt.blur();return}
+    const sb=await sahipBul();
+    if(!sb){bildir('Bu kalıbın Sahip Bölümü atanmamış. Önce "Kalıp - Bölüm Ataması" ya da Kalıp Listesi\'nden sahip bölümü atayın.','h');lt.blur();return}
+    lt.click();
+  });
   const tr=combo(el('input',{value:v.Tur||''}),ME.turler);f.Tur=tr;
   const toplam=el('input',{readOnly:true}),hafta=el('input',{readOnly:true,value:v.Hafta||''});
   const ac=el('textarea',{rows:2});ac.value=v.Aciklama||'';f.Aciklama=ac;
@@ -855,9 +872,15 @@ async function klDetay(s,yenile){
 
 function klTanim(s,yenile){
   const duzenle=!!s;s=s||{};
-  const kod=el('input',{value:s.KalipKodu||'',readOnly:duzenle}),ad=el('input',{value:s.KalipAdi||''}),tur=combo(el('input',{value:s.KalipTuru||''}),ME.kalipTurleri),
+  const turListe=[];
+  const kod=el('input',{value:s.KalipKodu||'',readOnly:duzenle}),ad=el('input',{value:s.KalipAdi||''}),tur=combo(el('input',{value:s.KalipTuru||''}),turListe),
     tepe=el('input',{value:s.TepeKodu||''}),lok=sel(ME.lokasyonlar,s.Lokasyon||'',{},''),sahip=sel(ME.bolumler,s.SahipBolum||'',{},''),
     raf=sel(ME.rafler,s.Raf||'',{},''),nt=el('textarea',{rows:3});nt.value=s.Notlar||'';
+  // kalıp türleri sahip bölüme bağlıdır: önce sahip bölüm seçilmeli
+  function turYukle(){turListe.length=0;const l=(ME.kalipTurBolum||{})[String(sahip.value||'').toLocaleUpperCase('tr')]||[];l.forEach(x=>turListe.push(x))}
+  turYukle();sahip.addEventListener('change',turYukle);
+  const turUyari=()=>{if(!sahip.value){bildir('Önce Sahip Bölümü seçin; kalıp türleri sahip bölüme göre gelir.','h');tur.value='';sahip.focus();return true}return false};
+  tur.addEventListener('focus',()=>{turUyari()});tur.addEventListener('input',()=>{turUyari()});
   const hata=el('div');
   const m=modal(duzenle?s.KalipKodu+' - düzenle':'Yeni kalıp',el('div',null,veriListe('dlKT',ME.kalipTurleri),
     el('div',{class:'alan'},el('div',null,el('label',null,'Kalıp kodu *'),kod),el('div',null,el('label',null,'Kalıp / parça adı'),ad)),
@@ -1562,15 +1585,20 @@ SAYFALAR.raflar=async function(k){
 SAYFALAR.turler=async function(k){
   if(!ME.admin)throw new Error('Bu sayfa yalnızca yöneticiler içindir.');
   const GRUPLAR=[['KalipTuru','Kalıp türleri','Kalıp Listesi ve Kalıp Takip\'te "Kalıp türü" olarak seçilen değerler'],['Tur','Kayıt türleri (Tür)','Kalıp Takip kaydındaki Tür: Tashih, İlave, Yeni, Hurda gibi']];
-  let grup='KalipTuru';
+  let grup='KalipTuru',bolum='';
+  const bolSec=sel(ME.bolumler,'',{style:'max-width:260px'},'(Ortak - tüm bölümler)');
+  bolSec.onchange=()=>{bolum=bolSec.value;yukle()};
+  const bolKutu=el('div',{class:'arac',style:'margin:8px 0'},el('span',{class:'sinir'},'Sahip bölüm:'),bolSec);
   const ust=el('div',{class:'sekmeler'}),icerik=el('div'),yeni=el('input',{placeholder:'Yeni değer yazın',style:'text-transform:none'});
   async function yukle(){
     ust.innerHTML='';
     GRUPLAR.forEach(g=>ust.append(el('button',{class:'b '+(g[0]===grup?'':'gri'),type:'button',onclick:()=>{grup=g[0];yukle()}},g[1])));
     icerik.innerHTML='';
-    let j;try{j=await api('/api/liste?grup='+grup)}catch(e){icerik.append(el('div',{class:'hata'},e.message));return}
+    bolKutu.style.display=grup==='KalipTuru'?'':'none';
+    const bq=grup==='KalipTuru'?bolum:'';
+    let j;try{j=await api('/api/liste?grup='+grup+'&bolum='+encodeURIComponent(bq))}catch(e){icerik.append(el('div',{class:'hata'},e.message));return}
     const aciklama=GRUPLAR.find(g=>g[0]===grup)[2];
-    icerik.append(el('div',{class:'sinir'},aciklama+'. Adı değiştirirseniz o değeri kullanan tüm kayıtlar da yeni adla güncellenir. Kayıtlarda kullanılan değer silinemez.'));
+    icerik.append(el('div',{class:'sinir'},aciklama+(grup==='KalipTuru'?(bolum?'. Burada yazdığınız türler yalnızca '+bolum+' bölümüne ait kalıplarda çıkar. "(Ortak)" olarak eklenen türler tüm bölümlerde çıkar.':'. Ortak türler tüm bölümlerde çıkar; bir bölüme özel tür eklemek için yukarıdan o bölümü seçin.'):'')+' Adı değiştirirseniz o değeri kullanan kayıtlar da yeni adla güncellenir. Kayıtlarda kullanılan değer silinemez.'));
     const tb=el('tbody');
     j.satirlar.forEach(s=>{
       const i=el('input',{value:s.Deger,style:'text-transform:none'});
@@ -1579,21 +1607,21 @@ SAYFALAR.turler=async function(k){
           el('button',{class:'b',type:'button',style:'padding:4px 10px',onclick:async()=>{
             if(!i.value.trim()||i.value.trim()===s.Deger){bildir('Önce adı değiştirin.','h');return}
             if(s.Kullanim>0&&!await onay(s.Kullanim+' kayıttaki "'+s.Deger+'" değeri "'+i.value.trim()+'" olarak güncellenecek. Devam edilsin mi?'))return;
-            try{const r=await api('/api/liste/ad',{grup,eski:s.Deger,yeni:i.value.trim()});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
+            try{const r=await api('/api/liste/ad',{grup,eski:s.Deger,yeni:i.value.trim(),bolum:bq});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
           }},'Adı değiştir'),
           el('button',{class:'b kirmizi',type:'button',style:'padding:4px 10px',title:s.Kullanim>0?'Kayıtlarda kullanılıyor, silinemez':'Sil',disabled:s.Kullanim>0,onclick:async()=>{
             if(!await onay('"'+s.Deger+'" listeden silinsin mi?'))return;
-            try{const r=await api('/api/liste/sil',{grup,deger:s.Deger});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
+            try{const r=await api('/api/liste/sil',{grup,deger:s.Deger,bolum:bq});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
           }},'✕')))));
     });
     icerik.append(el('div',{class:'tw',style:'max-height:52vh'},el('table',{class:'tbl'},el('thead',null,el('tr',null,el('th',null,'Değer'),el('th',null,'Kullanıldığı kayıt'),el('th',null,'Listede'),el('th'))),tb)));
     yeni.value='';
     icerik.append(el('div',{class:'arac',style:'margin-top:10px'},yeni,el('button',{class:'b yesil',type:'button',onclick:async()=>{
       if(!yeni.value.trim()){bildir('Değer yazın.','h');return}
-      try{const r=await api('/api/liste/ekle',{grup,deger:yeni.value.trim()});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
+      try{const r=await api('/api/liste/ekle',{grup,deger:yeni.value.trim(),bolum:grup==='KalipTuru'?bolum:''});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
     }},'+ Ekle')));
   }
-  k.append(el('h2',null,'Kalıp ve Kayıt Türleri'),ust,el('div',{class:'kart',style:'max-width:760px'},icerik));
+  k.append(el('h2',null,'Kalıp ve Kayıt Türleri'),ust,bolKutu,el('div',{class:'kart',style:'max-width:760px'},icerik));
   await yukle();
 };
 

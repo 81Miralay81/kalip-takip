@@ -153,6 +153,10 @@ Public NotInheritable Class Sema
                 degisti = True
             End If
             ' Sürüm 5: kalıp rafı
+            If Not SutunVar(c, "Liste", "Bolum") Then
+                Calistir(c, New String() {"ALTER TABLE Liste ADD COLUMN Bolum TEXT"})
+                degisti = True
+            End If
             If Not SutunVar(c, "KalipLokasyon", "Raf") Then
                 Calistir(c, New String() {"ALTER TABLE KalipLokasyon ADD COLUMN Raf TEXT"})
                 degisti = True

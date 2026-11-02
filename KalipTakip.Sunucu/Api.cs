@@ -403,16 +403,23 @@ namespace KalipTakip.Sunucu
                     Gerekli(k, Izin.KalipListeGor);
                     Json(ctx, 200, new { satirlar = Duz(RafRepository.Listele()) });
                     return true;
+                case "/api/kalip/sahip":
+                    {
+                        DataTable dt = Db.Tablo("SELECT SahipBolum FROM KalipLokasyon WHERE Anahtar = ?", TrMetin.Katla((Q(ctx, "kod") ?? "").Trim()));
+                        string sahipBolum = dt.Rows.Count > 0 && dt.Rows[0]["SahipBolum"] != DBNull.Value ? Convert.ToString(dt.Rows[0]["SahipBolum"]).Trim() : "";
+                        Json(ctx, 200, new { sahip = sahipBolum });
+                    }
+                    return true;
                 // ---- Liste değerleri: kalıp türleri ve kayıt türleri (yönetici)
                 case "/api/liste":
                     YoneticiGerekli(k);
-                    Json(ctx, 200, new { satirlar = Duz(ListeRepository.Listele(Q(ctx, "grup"))) });
+                    Json(ctx, 200, new { satirlar = Duz(ListeRepository.Listele(Q(ctx, "grup"), Q(ctx, "bolum"))) });
                     return true;
                 case "/api/liste/ekle":
                     YoneticiGerekli(k);
                     {
                         Dictionary<string, object> g = Govde(ctx);
-                        ListeRepository.Ekle(Metin(g, "grup"), Metin(g, "deger"));
+                        ListeRepository.Ekle(Metin(g, "grup"), Metin(g, "deger"), Metin(g, "bolum"));
                         Json(ctx, 200, new { mesaj = "Eklendi." });
                     }
                     return true;
@@ -420,7 +427,7 @@ namespace KalipTakip.Sunucu
                     YoneticiGerekli(k);
                     {
                         Dictionary<string, object> g = Govde(ctx);
-                        int n = ListeRepository.Adlandir(Metin(g, "grup"), Metin(g, "eski"), Metin(g, "yeni"));
+                        int n = ListeRepository.Adlandir(Metin(g, "grup"), Metin(g, "eski"), Metin(g, "yeni"), Metin(g, "bolum"));
                         Json(ctx, 200, new { mesaj = "Ad değiştirildi" + (n > 0 ? "; " + n + " kayıt güncellendi." : ".") });
                     }
                     return true;
@@ -428,7 +435,7 @@ namespace KalipTakip.Sunucu
                     YoneticiGerekli(k);
                     {
                         Dictionary<string, object> g = Govde(ctx);
-                        ListeRepository.Sil(Metin(g, "grup"), Metin(g, "deger"));
+                        ListeRepository.Sil(Metin(g, "grup"), Metin(g, "deger"), Metin(g, "bolum"));
                         Json(ctx, 200, new { mesaj = "Silindi." });
                     }
                     return true;
@@ -699,6 +706,27 @@ namespace KalipTakip.Sunucu
             return l;
         }
 
+        // Sahip bölüme göre kalıp türü seçenekleri: ortak değerler + bölüme tanımlılar + o bölümün kalıplarında kullanılanlar.
+        private static Dictionary<string, List<string>> KalipTurBolum(IEnumerable<string> bolumler)
+        {
+            CultureInfo tr = new CultureInfo("tr-TR");
+            Dictionary<string, List<string>> sonuc = new Dictionary<string, List<string>>();
+            foreach (string b in bolumler) sonuc[(b ?? "").Trim().ToUpper(tr)] = ListeRepository.GetirBolum(ListeRepository.GrupKalipTuru, b);
+            try
+            {
+                DataTable dt = Db.Tablo("SELECT DISTINCT l.SahipBolum AS B, TRIM(k.KalipTuru) AS T FROM Kalip k JOIN KalipLokasyon l ON l.Anahtar = KATLA(k.ParcaKodu) " +
+                                        "WHERE k.KalipTuru IS NOT NULL AND TRIM(k.KalipTuru) <> '' AND l.SahipBolum IS NOT NULL AND TRIM(l.SahipBolum) <> ''");
+                foreach (DataRow r in dt.Rows)
+                {
+                    string anahtar = Convert.ToString(r["B"]).Trim().ToUpper(tr), t = Convert.ToString(r["T"]).Trim();
+                    if (!sonuc.ContainsKey(anahtar)) sonuc[anahtar] = ListeRepository.GetirBolum(ListeRepository.GrupKalipTuru, anahtar);
+                    if (t.Length > 0 && !sonuc[anahtar].Contains(t, StringComparer.OrdinalIgnoreCase)) sonuc[anahtar].Add(t);
+                }
+            }
+            catch { }
+            return sonuc;
+        }
+
         private static List<string> SecenekListesi(string grup, string kolon)
         {
             List<string> sonuc = ListeRepository.Getir(grup);
@@ -733,6 +761,7 @@ namespace KalipTakip.Sunucu
                 talepKolonlar = TalepRepository.Kolonlar.Select(c => new { alan = c.Alan, baslik = c.Baslik, tip = c.Tip.ToString() }).ToList(),
                 klKolonlar = KalipListeRepository.Kolonlar.Select(c => new { alan = c.Alan, baslik = c.Baslik, tip = c.Tip.ToString() }).ToList(),
                 kalipTurleri = SecenekListesi(ListeRepository.GrupKalipTuru, "KalipTuru"),
+                kalipTurBolum = KalipTurBolum(TalepRepository.BolumListesi()),
                 turler = EkSecenek(SecenekListesi(ListeRepository.GrupTur, "Tur"), "TAMİR", "HURDA"),
                 kalipStatuleri = TalepKurallari.KalipStatuleri,
                 talepStatuleri = TalepKurallari.TalepStatuleri,
