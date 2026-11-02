@@ -121,7 +121,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='02.11.2026-W';
+const SURUM='02.11.2026-X';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -1670,9 +1670,10 @@ SAYFALAR.turler=async function(k){
             try{const r=await api('/api/liste/ad',{grup,eski:s.Deger,yeni:i.value.trim(),bolum:bq});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
           }},'Adı değiştir'),
           grup==='KalipTuru'&&s.Kullanim>0?el('button',{class:'b gri',type:'button',style:'padding:4px 10px',title:'Bu türdeki kalıpları Kalıp Listesi\'nde göster',onclick:()=>{location.hash='#/kl?alan=KalipTuru&q='+encodeURIComponent(s.Deger)}},'Kalıpları göster'):null,
-          el('button',{class:'b kirmizi',type:'button',style:'padding:4px 10px',title:s.Kullanim>0?'Kayıtlarda kullanılıyor, silinemez':'Sil',disabled:s.Kullanim>0,onclick:async()=>{
-            if(!await onay('"'+s.Deger+'" listeden silinsin mi?'))return;
-            try{const r=await api('/api/liste/sil',{grup,deger:s.Deger,bolum:bq});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
+          el('button',{class:'b kirmizi',type:'button',style:'padding:4px 10px',title:s.Kullanim>0?'Değeri kayıtlardan da temizleyip listeden kaldır':'Sil',onclick:async()=>{
+            const yol=s.Kullanim>0?'/api/liste/temizle':'/api/liste/sil';
+            if(!await onay(s.Kullanim>0?'"'+s.Deger+'" değeri '+s.Kullanim+' kayıtta kullanılıyor. Bu kayıtlardaki alan BOŞALTILIP değer listeden kaldırılacak (kalıp kayıtları silinmez). Devam edilsin mi?':'"'+s.Deger+'" listeden silinsin mi?'))return;
+            try{const r=await api(yol,{grup,deger:s.Deger,bolum:bq});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
           }},'✕')))));
     });
     icerik.append(el('div',{class:'tw',style:'max-height:52vh'},el('table',{class:'tbl'},el('thead',null,el('tr',null,el('th',null,'Değer'),el('th',null,'Kullanıldığı kayıt'),el('th',null,'Listede'),el('th'))),tb)));

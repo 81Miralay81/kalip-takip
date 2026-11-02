@@ -333,6 +333,49 @@ Public NotInheritable Class ListeRepository
         Return sayi
     End Function
 
+    ''' <summary>Değeri hem listeden hem kayıtlardan kaldırır: o değeri taşıyan kalıp kayıtlarının alanı boşaltılır (bölüm seçiliyse yalnız o bölümün kalıpları). Etkilenen kayıt sayısını döndürür.</summary>
+    Public Shared Function Temizle(grup As String, deger As String, bolum As String) As Integer
+        Dim k As String = Kolon(grup)
+        Dim d As String = If(deger, "").Trim()
+        If d.Length = 0 Then Throw New InvalidOperationException("Değer boş olamaz.")
+        Dim bk As Boolean = BolumKullan(grup, bolum)
+        Dim bKatla As String = If(bk, TrMetin.Katla(bolum.Trim()), "")
+        Dim sayi As Integer = 0
+        Using c As SQLiteConnection = Db.Ac()
+            Using tx As SQLiteTransaction = c.BeginTransaction()
+                If bk Then
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE Kalip SET " & k & " = NULL WHERE KATLA(TRIM(" & k & ")) = ? AND KATLA(ParcaKodu) IN (SELECT Anahtar FROM KalipLokasyon WHERE KATLA(COALESCE(SahipBolum, '')) = ?)", TrMetin.Katla(d), bKatla)
+                        sayi = cmd.ExecuteNonQuery()
+                    End Using
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE KalipTanim SET KalipTuru = NULL WHERE KATLA(TRIM(COALESCE(KalipTuru, ''))) = ? AND Anahtar IN (SELECT Anahtar FROM KalipLokasyon WHERE KATLA(COALESCE(SahipBolum, '')) = ?)", TrMetin.Katla(d), bKatla)
+                        sayi += cmd.ExecuteNonQuery()
+                    End Using
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "DELETE FROM Liste WHERE Grup = ? AND Deger = ? AND KATLA(COALESCE(Bolum, '')) = ?", grup, d, bKatla)
+                        cmd.ExecuteNonQuery()
+                    End Using
+                Else
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE Kalip SET " & k & " = NULL WHERE KATLA(TRIM(" & k & ")) = ?", TrMetin.Katla(d))
+                        sayi = cmd.ExecuteNonQuery()
+                    End Using
+                    If grup = GrupKalipTuru Then
+                        Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE KalipTanim SET KalipTuru = NULL WHERE KATLA(TRIM(COALESCE(KalipTuru, ''))) = ?", TrMetin.Katla(d))
+                            sayi += cmd.ExecuteNonQuery()
+                        End Using
+                        Using cmd As SQLiteCommand = Db.Komut(c, tx, "DELETE FROM Liste WHERE Grup = ? AND Deger = ? AND (Bolum IS NULL OR TRIM(Bolum) = '')", grup, d)
+                            cmd.ExecuteNonQuery()
+                        End Using
+                    Else
+                        Using cmd As SQLiteCommand = Db.Komut(c, tx, "DELETE FROM Liste WHERE Grup = ? AND Deger = ?", grup, d)
+                            cmd.ExecuteNonQuery()
+                        End Using
+                    End If
+                End If
+                tx.Commit()
+            End Using
+        End Using
+        Return sayi
+    End Function
+
     ''' <summary>Değeri listeden siler. Kayıtlarda kullanılan değer silinemez (önce adını değiştirin).</summary>
     Public Shared Sub Sil(grup As String, deger As String, bolum As String)
         Dim d As String = If(deger, "").Trim()

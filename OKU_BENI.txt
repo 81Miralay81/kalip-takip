@@ -5,3 +5,6 @@ SÜRÜM W (02.11.2026)
   Tepe kodu, Lokasyon ve Notlar için yazı kutusu + kamera kalır.
 - "Kalıpları göster" boş geliyordu: Kalıp türü sorgusu 81.000 kaydı her kalıp için yeniden taradığından çok yavaştı. Tek seferlik tarama olarak yeniden yazıldı.
 - Arama sonucu yoksa "Bu ölçüte uyan kalıp bulunamadı." yazar.
+
+SÜRÜM X (02.11.2026)
+- Türler sayfasında "yalnız kayıtlarda" geçen değerlerin ✕ düğmesi artık çalışır: kayıtlardaki alanı boşaltır, değeri listeden kaldırır (kalıp kayıtları silinmez; onay sorulur).
