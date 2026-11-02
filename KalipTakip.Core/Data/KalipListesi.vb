@@ -372,6 +372,140 @@ Public NotInheritable Class KalipListeRepository
         End Using
         Return yeni.ToString() & " yeni kalıp eklendi, " & guncellenen.ToString() & " kalıp güncellendi" & If(atlanan > 0, ", " & atlanan.ToString() & " satır kodu boş olduğu için atlandı.", ".")
     End Function
+
+    ''' <summary>Bir kalıp koduna bağlı kayıt sayıları: Kalıp Takip kaydı, talep satırı, hareket.</summary>
+    Public Shared Sub Kullanim(kod As String, ByRef takip As Long, ByRef talep As Long, ByRef hareket As Long)
+        Dim a As String = TrMetin.Katla(If(kod, "").Trim())
+        takip = Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM Kalip WHERE KATLA(ParcaKodu) = ?", a))
+        talep = Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM TalepKalip WHERE Anahtar = ?", a))
+        hareket = Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM KalipHareket WHERE Anahtar = ?", a))
+    End Sub
+
+    ''' <summary>
+    ''' Kalıp kodunu düzeltir: tanım, sahip/raf, talep satırları, hareketler ve Kalıp Takip kayıtları yeni koda taşınır.
+    ''' Yeni kod zaten varsa kayıtlar o kalıba birleşir (eski tanım/lokasyon satırı silinir, yeni olan korunur).
+    ''' </summary>
+    Public Shared Function KodDuzelt(eski As String, yeni As String, kullanici As String) As String
+        Dim e As String = If(eski, "").Trim()
+        Dim y As String = If(yeni, "").Trim()
+        If e.Length = 0 Then Throw New InvalidOperationException("Eski kod boş olamaz.")
+        If y.Length = 0 Then Throw New InvalidOperationException("Yeni kod boş olamaz.")
+        Dim aE As String = TrMetin.Katla(e)
+        Dim aY As String = TrMetin.Katla(y)
+        Dim takip, talep, hareket As Long
+        Kullanim(e, takip, talep, hareket)
+        Dim tanimVar As Long = Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM KalipTanim WHERE Anahtar = ?", aE)) + Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM KalipLokasyon WHERE Anahtar = ?", aE))
+        If takip + talep + hareket + tanimVar = 0 Then Throw New InvalidOperationException("'" & e & "' koduna ait kayıt bulunamadı.")
+        Dim birlesti As Boolean = (aY <> aE) AndAlso (Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM KalipTanim WHERE Anahtar = ?", aY)) + Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM KalipLokasyon WHERE Anahtar = ?", aY)) + Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM TalepKalip WHERE Anahtar = ?", aY)) + Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM Kalip WHERE KATLA(ParcaKodu) = ?", aY)) > 0)
+        Dim talepIdleri As New List(Of Integer)()
+        For Each r As DataRow In Db.Tablo("SELECT DISTINCT TalepId FROM TalepKalip WHERE Anahtar = ?", aE).Rows
+            talepIdleri.Add(Convert.ToInt32(r("TalepId")))
+        Next
+        Using c As SQLiteConnection = Db.Ac()
+            Using tx As SQLiteTransaction = c.BeginTransaction()
+                For Each tablo As String In New String() {"KalipTanim", "KalipLokasyon"}
+                    If aY = aE Then
+                        Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE " & tablo & " SET KalipKodu = ? WHERE Anahtar = ?", y, aE)
+                            cmd.ExecuteNonQuery()
+                        End Using
+                    Else
+                        Dim hedefte As Long
+                        Using cmd As SQLiteCommand = Db.Komut(c, tx, "SELECT COUNT(*) FROM " & tablo & " WHERE Anahtar = ?", aY)
+                            hedefte = Convert.ToInt64(cmd.ExecuteScalar())
+                        End Using
+                        If hedefte > 0 Then
+                            Using cmd As SQLiteCommand = Db.Komut(c, tx, "DELETE FROM " & tablo & " WHERE Anahtar = ?", aE)
+                                cmd.ExecuteNonQuery()
+                            End Using
+                        Else
+                            Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE " & tablo & " SET Anahtar = ?, KalipKodu = ? WHERE Anahtar = ?", aY, y, aE)
+                                cmd.ExecuteNonQuery()
+                            End Using
+                        End If
+                    End If
+                Next
+                Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE TalepKalip SET KalipKodu = ?, Anahtar = ? WHERE Anahtar = ?", y, aY, aE)
+                    cmd.ExecuteNonQuery()
+                End Using
+                Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE KalipHareket SET KalipKodu = ?, Anahtar = ? WHERE Anahtar = ?", y, aY, aE)
+                    cmd.ExecuteNonQuery()
+                End Using
+                Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE Kalip SET ParcaKodu = ? WHERE KATLA(ParcaKodu) = ?", y, aE)
+                    cmd.ExecuteNonQuery()
+                End Using
+                For Each id As Integer In talepIdleri
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE Talep SET KalipKodu = COALESCE((SELECT group_concat(KalipKodu, ', ') FROM TalepKalip WHERE TalepId = ?), '-') WHERE Id = ?", id, id)
+                        cmd.ExecuteNonQuery()
+                    End Using
+                Next
+                tx.Commit()
+            End Using
+        End Using
+        Return e & " → " & y & " olarak düzeltildi (" & takip.ToString() & " Kalıp Takip kaydı, " & talep.ToString() & " talep satırı taşındı" & If(birlesti, "; mevcut kalıpla birleştirildi", "") & ")."
+    End Function
+
+    ''' <summary>
+    ''' Kalıbı Kalıp Listesi'nden siler (tanım, sahip/raf, hareketler). Kalıp Takip kaydı varsa silinmez.
+    ''' Talep geçmişi varsa yalnızca zorla=True ile silinir; bu durumda talep satırları da kalkar.
+    ''' </summary>
+    Public Shared Function KalipSil(kod As String, zorla As Boolean) As String
+        Dim k As String = If(kod, "").Trim()
+        If k.Length = 0 Then Throw New InvalidOperationException("Kalıp kodu boş olamaz.")
+        Dim a As String = TrMetin.Katla(k)
+        Dim takip, talep, hareket As Long
+        Kullanim(k, takip, talep, hareket)
+        If takip > 0 Then Throw New InvalidOperationException("'" & k & "' için " & takip.ToString() & " Kalıp Takip kaydı var; silinemez. Kod yanlış yazılmışsa 'Kodu düzelt' ile doğru koda taşıyın.")
+        If talep > 0 AndAlso Not zorla Then Throw New InvalidOperationException("'" & k & "' " & talep.ToString() & " talep satırında geçiyor; silinemez. Kod yanlışsa 'Kodu düzelt' ile doğru koda taşıyın; gerçekten silmek için 'geçmişiyle birlikte sil' kullanın.")
+        Dim talepIdleri As New List(Of Integer)()
+        For Each r As DataRow In Db.Tablo("SELECT DISTINCT TalepId FROM TalepKalip WHERE Anahtar = ?", a).Rows
+            talepIdleri.Add(Convert.ToInt32(r("TalepId")))
+        Next
+        Using c As SQLiteConnection = Db.Ac()
+            Using tx As SQLiteTransaction = c.BeginTransaction()
+                For Each sql As String In New String() {"DELETE FROM KalipTanim WHERE Anahtar = ?", "DELETE FROM KalipLokasyon WHERE Anahtar = ?", "DELETE FROM KalipHareket WHERE Anahtar = ?", "DELETE FROM TalepKalip WHERE Anahtar = ?"}
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, sql, a)
+                        cmd.ExecuteNonQuery()
+                    End Using
+                Next
+                For Each id As Integer In talepIdleri
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE Talep SET KalipKodu = COALESCE((SELECT group_concat(KalipKodu, ', ') FROM TalepKalip WHERE TalepId = ?), '-') WHERE Id = ?", id, id)
+                        cmd.ExecuteNonQuery()
+                    End Using
+                Next
+                tx.Commit()
+            End Using
+        End Using
+        Return k & " silindi."
+    End Function
+
+    ''' <summary>Verilen kodlardan hiçbir kaydı (Kalıp Takip, talep, hareket) olmayanları siler; diğerleri atlanır.</summary>
+    Public Shared Function TemizSil(kodlar As IEnumerable(Of String), ByRef atlanan As Integer) As Integer
+        Dim silinen As Integer = 0
+        atlanan = 0
+        For Each kod As String In kodlar
+            If String.IsNullOrWhiteSpace(kod) Then Continue For
+            Dim takip, talep, hareket As Long
+            Kullanim(kod, takip, talep, hareket)
+            If takip + talep + hareket > 0 Then
+                atlanan += 1
+                Continue For
+            End If
+            Dim a As String = TrMetin.Katla(kod.Trim())
+            Using c As SQLiteConnection = Db.Ac()
+                Using tx As SQLiteTransaction = c.BeginTransaction()
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "DELETE FROM KalipTanim WHERE Anahtar = ?", a)
+                        cmd.ExecuteNonQuery()
+                    End Using
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "DELETE FROM KalipLokasyon WHERE Anahtar = ?", a)
+                        cmd.ExecuteNonQuery()
+                    End Using
+                    tx.Commit()
+                End Using
+            End Using
+            silinen += 1
+        Next
+        Return silinen
+    End Function
 End Class
 
 

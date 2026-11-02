@@ -403,6 +403,29 @@ namespace KalipTakip.Sunucu
                     Gerekli(k, Izin.KalipListeGor);
                     Json(ctx, 200, new { satirlar = Duz(RafRepository.Listele()) });
                     return true;
+                case "/api/kl/kodduzelt":
+                    YoneticiGerekli(k);
+                    {
+                        Dictionary<string, object> g = Govde(ctx);
+                        Json(ctx, 200, new { mesaj = KalipListeRepository.KodDuzelt(Metin(g, "eski"), Metin(g, "yeni"), k.KullaniciAdi) });
+                    }
+                    return true;
+                case "/api/kl/sil":
+                    YoneticiGerekli(k);
+                    {
+                        Dictionary<string, object> g = Govde(ctx);
+                        Json(ctx, 200, new { mesaj = KalipListeRepository.KalipSil(Metin(g, "kod"), GBool(g, "zorla")) });
+                    }
+                    return true;
+                case "/api/kl/temizsil":
+                    YoneticiGerekli(k);
+                    {
+                        List<string> kodlar = GListe(Govde(ctx), "kodlar").Select(o => Convert.ToString(o)).ToList();
+                        int atlanan = 0;
+                        int silinen = KalipListeRepository.TemizSil(kodlar, ref atlanan);
+                        Json(ctx, 200, new { mesaj = silinen + " kalıp silindi" + (atlanan > 0 ? "; " + atlanan + " kalıp kaydı/geçmişi olduğu için atlandı." : ".") });
+                    }
+                    return true;
                 case "/api/kalip/sahip":
                     {
                         DataTable dt = Db.Tablo("SELECT SahipBolum FROM KalipLokasyon WHERE Anahtar = ?", TrMetin.Katla((Q(ctx, "kod") ?? "").Trim()));
