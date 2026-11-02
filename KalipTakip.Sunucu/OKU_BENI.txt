@@ -72,3 +72,4 @@ CIHAZ ERISIMI (parola dogru olsa bile yalnizca onayli cihaz girer)
 - 30.10.2026-M: L'deki 'doğrudan arama kutusuna yaz' davranışı kullanıcı isteğiyle kapatıldı; kamera tüm ekranlarda seçim listesiyle (sürüm K davranışı) çalışır. Kod ops.arama ile hazır, istenirse açılır.
 - 02.11.2026-N: Kalıp etiketlerinde yalnız 'Tamir: N' ve 'Aktif/Hurda' durumu gösterilir (ilave/yeni/aktif adedi kaldırıldı). Kalıp Listesine seçilebilir 'Durum (Aktif/Hurda)' sütunu eklendi (Hurda kaydı varsa Hurda).
 - 02.11.2026-O: Günlük otomatik yedek: veritabanının yanındaki Yedek klasörüne KalipTakip_YYYY-AA-GG.db (son 30 saklanır), sunucu açılışında ve saatte bir kontrol.
+- 02.11.2026-P: Sunucu veritabanı yolu (App.config) \\KALIPNAS2019\kaliphanenas\OMUR\takip\KalipTakip.db olarak değiştirildi. Eski konumdaki dosya bu konuma taşınmalı/kopyalanmalı; Yedek klasörü de bu klasörde oluşur.
