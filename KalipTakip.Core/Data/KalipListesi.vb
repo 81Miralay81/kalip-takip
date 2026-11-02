@@ -83,6 +83,14 @@ Public NotInheritable Class KalipListeRepository
 
     ' izinliBolumler: Nothing = hepsi; dolu liste = yalnızca sahibi bu bölümlerden biri olan (ya da sahibi atanmamış) kalıplar.
     Public Shared Function Ara(metin As String, arama As Integer, limit As Integer, izinliBolumler As ICollection(Of String)) As DataTable
+        Return Ara(metin, arama, limit, izinliBolumler, "")
+    End Function
+
+    ' alan: boş değilse arama o sütunda yapılır (KalipTuru, KalipAdi, TepeKodu, Lokasyon, SahipBolum, SonKalipStatu, Durum, Notlar). Joker (*) desteklenir.
+    Public Shared Function Ara(metin As String, arama As Integer, limit As Integer, izinliBolumler As ICollection(Of String), alan As String) As DataTable
+        If Not String.IsNullOrWhiteSpace(alan) AndAlso Not String.IsNullOrWhiteSpace(metin) Then
+            Return Sorgu(metin, 3, limit, izinliBolumler, alan)
+        End If
         If arama = 1 AndAlso Not String.IsNullOrWhiteSpace(metin) Then
             Dim tam As DataTable = Sorgu(metin, 2, limit, izinliBolumler)
             If tam.Rows.Count > 0 Then Return tam
@@ -91,8 +99,45 @@ Public NotInheritable Class KalipListeRepository
         Return Sorgu(metin, 0, limit, izinliBolumler)
     End Function
 
-    ' bicim: 0 = kod/ad içinde geçen, 1 = raf içinde geçen, 2 = raf tam eşleşme
     Private Shared Function Sorgu(metin As String, bicim As Integer, limit As Integer, izinliBolumler As ICollection(Of String)) As DataTable
+        Return Sorgu(metin, bicim, limit, izinliBolumler, "")
+    End Function
+
+    ' Aranabilir sütunlar (güvenli beyaz liste). Kalıp türü: kalıp tanımındaki ya da Kalıp Takip kayıtlarındaki herhangi bir değer.
+    Private Shared Function AlanKosulu(alan As String, p As List(Of Object), desen As String) As String
+        Select Case alan
+            Case "KalipTuru"
+                p.Add(desen)
+                p.Add(desen)
+                Return "(KATLA(COALESCE(COALESCE(t.KalipTuru, kk.KalipTuru), '')) LIKE ? ESCAPE '\' OR EXISTS (SELECT 1 FROM Kalip kx WHERE KATLA(kx.ParcaKodu) = d.A AND KATLA(COALESCE(kx.KalipTuru, '')) LIKE ? ESCAPE '\'))"
+            Case "KalipAdi"
+                p.Add(desen)
+                Return "KATLA(COALESCE(COALESCE(t.KalipAdi, kk.ParcaAdi), '')) LIKE ? ESCAPE '\'"
+            Case "TepeKodu"
+                p.Add(desen)
+                Return "KATLA(COALESCE(t.TepeKodu, '')) LIKE ? ESCAPE '\'"
+            Case "Lokasyon"
+                p.Add(desen)
+                Return "KATLA(COALESCE(l.Lokasyon, '')) LIKE ? ESCAPE '\'"
+            Case "SahipBolum"
+                p.Add(desen)
+                Return "KATLA(COALESCE(l.SahipBolum, '')) LIKE ? ESCAPE '\'"
+            Case "SonKalipStatu"
+                p.Add(desen)
+                Return "KATLA(COALESCE(tk.KalipStatu, '')) LIKE ? ESCAPE '\'"
+            Case "Notlar"
+                p.Add(desen)
+                Return "KATLA(COALESCE(t.Notlar, '')) LIKE ? ESCAPE '\'"
+            Case "Durum"
+                p.Add(desen)
+                Return "KATLA(CASE WHEN COALESCE(kg.Hurda, 0) > 0 THEN 'Hurda' ELSE 'Aktif' END) LIKE ? ESCAPE '\'"
+            Case Else
+                Throw New InvalidOperationException("Bilinmeyen arama alanı: " & alan)
+        End Select
+    End Function
+
+    ' bicim: 0 = kod/ad içinde geçen, 1 = raf içinde geçen, 2 = raf tam eşleşme, 3 = belirtilen sütunda ara
+    Private Shared Function Sorgu(metin As String, bicim As Integer, limit As Integer, izinliBolumler As ICollection(Of String), alan As String) As DataTable
         Dim sql As New StringBuilder()
         sql.Append("WITH kg AS (SELECT KATLA(ParcaKodu) AS A, MIN(ParcaKodu) AS Kod, MAX(GelisTarihi) AS SonGelis, ")
         sql.Append("MAX(CASE WHEN (TashihSayi > 0 OR KATLA(COALESCE(Tur,'')) LIKE 'tash%' OR KATLA(COALESCE(Tur,'')) LIKE 'tamir%') THEN COALESCE(GelisTarihi, BitisTarihi) END) AS SonTashih, SUM(CASE WHEN KATLA(COALESCE(Tur,'')) LIKE 'ilave%' THEN 1 ELSE 0 END) AS Ilave, SUM(CASE WHEN KATLA(COALESCE(Tur,'')) LIKE 'yeni%' THEN 1 ELSE 0 END) AS Yeni, SUM(CASE WHEN KATLA(COALESCE(Tur,'')) LIKE 'hurda%' THEN 1 ELSE 0 END) AS Hurda, MAX(COALESCE(MAX(TashihSayi), 0), SUM(CASE WHEN (TashihSayi > 0 OR KATLA(COALESCE(Tur,'')) LIKE 'tash%' OR KATLA(COALESCE(Tur,'')) LIKE 'tamir%') THEN 1 ELSE 0 END)) AS Tashih, COUNT(*) AS Kayit, MAX(Id) AS SonId ")
@@ -122,6 +167,8 @@ Public NotInheritable Class KalipListeRepository
                 Case 1
                     kosullar.Add("KATLA(l.Raf) LIKE ? ESCAPE '\'")
                     p.Add(Desen(metin))
+                Case 3
+                    kosullar.Add(AlanKosulu(alan, p, Desen(metin)))
                 Case Else
                     kosullar.Add("KATLA(l.Raf) = ?")
                     p.Add(TrMetin.Katla(metin.Trim()))

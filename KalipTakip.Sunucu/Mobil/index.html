@@ -121,7 +121,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='02.11.2026-U';
+const SURUM='02.11.2026-V';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -801,14 +801,22 @@ async function ktIstatistik(bolum0){
 }
 
 // =========================================================== KALIP LİSTESİ
+// Kalıp Listesi: arama ölçütü. 0 = kalıp kodu/adı, 1 = raf, 'a:Alan' = başlıktaki sütuna göre
+const KL_ALANLAR=[['KalipTuru','Kalıp türü'],['KalipAdi','Kalıp / parça adı'],['TepeKodu','Tepe kodu'],['Lokasyon','Lokasyon'],['SahipBolum','Sahip bölüm'],['SonKalipStatu','Son kalıp statü'],['Durum','Durum (Aktif/Hurda)'],['Notlar','Notlar']];
+function klAramaParam(modDeger,q){
+  const m=String(modDeger);
+  if(m.indexOf('a:')===0)return {mod:0,alan:m.slice(2),q};
+  return {mod:m,q};
+}
 SAYFALAR.kl=function(k){
-  const mod=sel([{v:0,t:'Kalıp ile ara'},{v:1,t:'Raf ile ara'}],0,{style:'flex:0 0 170px'});
-  const q=el('input',{placeholder:'Kalıp kodu veya adı'});
+  const hp=new URLSearchParams((location.hash.split('?')[1]||''));
+  const mod=sel([{v:'0',t:'Kalıp ile ara'},{v:'1',t:'Raf ile ara'}].concat(KL_ALANLAR.map(a=>({v:'a:'+a[0],t:a[1]+' ile ara'}))),hp.get('alan')?'a:'+hp.get('alan'):'0',{style:'flex:0 0 200px'});
+  const q=el('input',{placeholder:'Kalıp kodu veya adı',value:hp.get('q')||''});
   const sonuc=el('div'),bilgi=el('div',{class:'sinir'});
   let listedekiler=[];
   async function yenile(){
     try{
-      const j=await api('/api/kalip?'+qs({mod:mod.value,q:q.value}));
+      const j=await api('/api/kalip?'+qs(klAramaParam(mod.value,q.value)));
       sonuc.innerHTML='';
       listedekiler=j.satirlar.map(x=>x.KalipKodu);
       sonuc.append(tablo(ME.klKolonlar,j.satirlar,{sec:(s,tr)=>{secIsaretle(tr);klDetay(s,yenile)}}));
@@ -816,7 +824,9 @@ SAYFALAR.kl=function(k){
     }catch(e){sonuc.innerHTML='';sonuc.append(el('div',{class:'hata'},e.message))}
   }
   let zaman;q.oninput=()=>{clearTimeout(zaman);zaman=setTimeout(yenile,350)};
-  mod.onchange=()=>{q.placeholder=mod.value==='1'?'Raf adı (o rafta bulunan tüm kalıplar)':'Kalıp kodu veya adı';yenile()};
+  const ipucu=()=>{const m=String(mod.value);q.placeholder=m==='1'?'Raf adı (o rafta bulunan tüm kalıplar)':(m.indexOf('a:')===0?(KL_ALANLAR.find(a=>'a:'+a[0]===m)||[0,''])[1]+' içinde ara (joker: *)':'Kalıp kodu veya adı')};
+  ipucu();
+  mod.onchange=()=>{ipucu();yenile()};
   q.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(zaman);yenile()}};
   const dosya=el('input',{type:'file',accept:'.xlsx,.csv,.txt',style:'display:none',onchange:async()=>{
     const f=dosya.files[0];if(!f)return;
@@ -829,7 +839,7 @@ SAYFALAR.kl=function(k){
     el('div',{class:'arac'},mod,q,kamDugme(q,yenile),
       izin('kl_ekle')&&el('button',{class:'b yesil',onclick:()=>klTanim(null,yenile)},'+ Yeni kalıp'),
       izin('kl_ekle')&&el('button',{class:'b',onclick:()=>dosya.click()},'Excel / CSV yükle'),
-      izin('kl_excel')&&el('button',{class:'b gri',onclick:()=>indir('/api/kl/excel?'+qs({mod:mod.value,q:q.value}),'kalip_listesi.csv')},'Excel\'e aktar'),
+      izin('kl_excel')&&el('button',{class:'b gri',onclick:()=>indir('/api/kl/excel?'+qs(klAramaParam(mod.value,q.value)),'kalip_listesi.csv')},'Excel\'e aktar'),
       ME.admin&&el('button',{class:'b kirmizi',title:'Ekrandaki kalıplardan Kalıp Takip kaydı, talep geçmişi ya da hareketi olmayanları siler',onclick:async()=>{
         if(!listedekiler.length){bildir('Önce silinecek kalıpları listeleyin (arama yapın).','h');return}
         if(!confirm('Ekrandaki '+listedekiler.length+' kalıptan hiçbir kaydı/geçmişi olmayanlar silinecek; kaydı olanlara dokunulmaz. Devam edilsin mi?'))return;
@@ -1634,6 +1644,7 @@ SAYFALAR.turler=async function(k){
             if(s.Kullanim>0&&!await onay(s.Kullanim+' kayıttaki "'+s.Deger+'" değeri "'+i.value.trim()+'" olarak güncellenecek. Devam edilsin mi?'))return;
             try{const r=await api('/api/liste/ad',{grup,eski:s.Deger,yeni:i.value.trim(),bolum:bq});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
           }},'Adı değiştir'),
+          grup==='KalipTuru'&&s.Kullanim>0?el('button',{class:'b gri',type:'button',style:'padding:4px 10px',title:'Bu türdeki kalıpları Kalıp Listesi\'nde göster',onclick:()=>{location.hash='#/kl?alan=KalipTuru&q='+encodeURIComponent(s.Deger)}},'Kalıpları göster'):null,
           el('button',{class:'b kirmizi',type:'button',style:'padding:4px 10px',title:s.Kullanim>0?'Kayıtlarda kullanılıyor, silinemez':'Sil',disabled:s.Kullanim>0,onclick:async()=>{
             if(!await onay('"'+s.Deger+'" listeden silinsin mi?'))return;
             try{const r=await api('/api/liste/sil',{grup,deger:s.Deger,bolum:bq});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}

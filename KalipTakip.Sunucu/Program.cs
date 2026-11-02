@@ -176,7 +176,7 @@ namespace KalipTakip.Sunucu
                         Gerekli(k, Izin.KalipListeGor);
                         {
                             int mod = ctx.Request.QueryString["mod"] == "1" ? 1 : 0;
-                            DataTable dt = KalipListeRepository.Ara(ctx.Request.QueryString["q"] ?? "", mod, 100, GorunurBolumler(k));
+                            DataTable dt = KalipListeRepository.Ara(ctx.Request.QueryString["q"] ?? "", mod, 100, GorunurBolumler(k), ctx.Request.QueryString["alan"] ?? "");
                             Json(ctx, 200, new { satirlar = Duz(dt), sinirli = dt.Rows.Count >= 100 });
                         }
                         break;

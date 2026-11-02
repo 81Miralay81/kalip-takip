@@ -362,7 +362,7 @@ namespace KalipTakip.Sunucu
                     return true;
                 case "/api/kl/excel":
                     Gerekli(k, Izin.KalipListeExcel);
-                    CsvGonder(ctx, "kalip_listesi.csv", KalipListeRepository.Ara(Q(ctx, "q"), QTam(ctx, "mod", 0), 0, GorunurBolumler(k)), KalipListeRepository.Kolonlar);
+                    CsvGonder(ctx, "kalip_listesi.csv", KalipListeRepository.Ara(Q(ctx, "q"), QTam(ctx, "mod", 0), 0, GorunurBolumler(k), Q(ctx, "alan")), KalipListeRepository.Kolonlar);
                     return true;
 
                 // ---- Kalıp - bölüm ataması (kalıbın sahibi olan bölüm; kullanıcılar yalnızca kendi bölümlerinin kalıplarını görür)
