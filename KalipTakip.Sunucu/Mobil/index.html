@@ -121,7 +121,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='02.11.2026-R';
+const SURUM='02.11.2026-S';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -940,6 +940,25 @@ function oneriBagla(input,sec){
   });
 }
 
+// Özel sağ tık menüsü: ogeler = [{ad,aktif,f,neden}] ya da '-' (ayraç). Uygun olmayan işlemler pasif görünür.
+function sagMenu(x,y,ogeler){
+  const eski=document.getElementById('sagMenu');if(eski)eski.remove();
+  const m=el('div',{id:'sagMenu',style:'position:fixed;z-index:9999;min-width:240px;max-width:92vw;background:#1b2150;border:1px solid #3b4590;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);padding:4px;font-size:14px'});
+  const kapat=()=>{m.remove();document.removeEventListener('mousedown',dis,true);document.removeEventListener('keydown',esc,true);window.removeEventListener('scroll',kapat,true)};
+  const dis=e=>{if(!m.contains(e.target))kapat()};
+  const esc=e=>{if(e.key==='Escape')kapat()};
+  ogeler.forEach(o=>{
+    if(o==='-'){m.append(el('div',{style:'height:1px;background:#2c3366;margin:4px 6px'}));return}
+    const d=el('div',{style:'padding:8px 12px;border-radius:6px;white-space:nowrap;'+(o.aktif?'cursor:pointer;color:#e8ecff':'color:#6b7399;cursor:default'),title:o.aktif?'':(o.neden||'')},o.ad);
+    if(o.aktif){d.addEventListener('mouseover',()=>{d.style.background='#2d3478'});d.addEventListener('mouseout',()=>{d.style.background=''});d.addEventListener('click',()=>{kapat();o.f()})}
+    m.append(d);
+  });
+  document.body.append(m);
+  const r=m.getBoundingClientRect();
+  m.style.left=Math.max(4,Math.min(x,innerWidth-r.width-4))+'px';m.style.top=Math.max(4,Math.min(y,innerHeight-r.height-4))+'px';
+  document.addEventListener('mousedown',dis,true);document.addEventListener('keydown',esc,true);setTimeout(()=>{if(m.isConnected)window.addEventListener('scroll',kapat,true)},400);
+}
+
 SAYFALAR.talep=async function(k){
   const det=ME.lokasyonDetay||[];
   const U=x=>String(x||'').toLocaleUpperCase('tr');
@@ -969,22 +988,81 @@ SAYFALAR.talep=async function(k){
   }
   fBolum.onchange=()=>{varsayilanAlici();ciz()};
 
+  // ---- çoklu seçim (tıkla, Ctrl/Shift+tıkla, fareyi basılı tutup sürükle) ve sağ tık menüsü
+  let secili=new Set(),trler=[],surukle=false,bas=-1,sonIdx=-1;
+  const secBilgi=el('span',{class:'sinir'});
+  function secimBoya(){trler.forEach((tr,i)=>{if(tr)tr.classList.toggle('sec',secili.has(satirlar[i]))});secBilgi.textContent=secili.size?secili.size+' kalıp seçili':''}
+  function aralik(a,b){const x=Math.min(a,b),y=Math.max(a,b);secili=new Set(satirlar.slice(x,y+1));secimBoya()}
+  function satirFare(e,i){
+    if(e.button!==0||e.target.closest('input,button,select,textarea'))return;
+    if(e.ctrlKey||e.metaKey){const t=satirlar[i];if(secili.has(t))secili.delete(t);else secili.add(t);sonIdx=i;secimBoya();return}
+    if(e.shiftKey&&sonIdx>=0){aralik(sonIdx,i);return}
+    secili=new Set([satirlar[i]]);sonIdx=i;bas=i;surukle=true;secimBoya();
+  }
+  function satirUstunde(i){if(surukle&&bas>=0)aralik(bas,i)}
+  document.addEventListener('mouseup',()=>{surukle=false});
+  const secilenler=()=>satirlar.filter(x=>secili.has(x));
+  function uygunluk(){
+    const gon=gonderildi(),iptalMi=!!mevcut&&mevcut.statu==='İptal',alici=mevcut?mevcut.alici:'';
+    const aliciYetki=!!mevcut&&izin('talep_teslim')&&gorunur(mevcut.alici),gonderenYetki=!!mevcut&&izin('talep_gonder')&&gorunur(mevcut.bolum),rafYetki=!!mevcut&&izin('raf_kaldir')&&gorunur(mevcut.alici);
+    const sevkU=x=>gon&&!iptalMi&&!mevcut.geriDondu&&aliciYetki&&x.KalipStatu==='Sevkediliyor';
+    const rafU=x=>gon&&!iptalMi&&rafYetki&&['Teslim Alındı','Tamamlandı'].indexOf(x.KalipStatu)>=0&&!x.Raf;
+    return {gon,iptalMi,alici,aliciYetki,gonderenYetki,rafYetki,sevkU,rafaU:x=>sevkU(x)||rafU(x),
+      isleU:x=>gon&&!iptalMi&&rafYetki&&x.KalipStatu==='Teslim Alındı'&&U(x.SahipBolum)!==U(alici)};
+  }
+  function menuAc(x,y){
+    const u=uygunluk(),sec=secilenler();
+    const secSevk=sec.filter(u.sevkU),secRaf=sec.filter(u.rafaU),secIsle=sec.filter(u.isleU),tumRaf=satirlar.filter(u.rafaU);
+    const sevkTum=satirlar.filter(z=>z.KalipStatu==='Sevkediliyor').length;
+    const oge=[
+      {ad:'📍 Seçili kalıpları rafa al'+(secRaf.length?' ('+secRaf.length+')':''),aktif:secRaf.length>0,neden:sec.length?'Seçili kalıplar rafa alınamaz (teslim alınmamış, raf zaten var ya da yetkiniz yok).':'Önce kalıp seçin.',f:()=>rafaAlDialog(secRaf)},
+      {ad:'📍 Talebi rafa al (tüm kalıplar)'+(tumRaf.length?' ('+tumRaf.length+')':''),aktif:!sec.length&&tumRaf.length>0,neden:sec.length?'Kalıp seçiliyken pasif; seçimi temizleyin.':'Rafa alınacak kalıp yok.',f:()=>rafaAlDialog(tumRaf)},
+      '-',
+      {ad:'📥 Seçili kalıpları teslim al'+(secSevk.length?' ('+secSevk.length+')':''),aktif:secSevk.length>0,neden:'Teslim alınacak (yolda) kalıp seçin.',f:()=>teslimDialog(secSevk)},
+      {ad:'🛠 Seçili kalıpları işleme al'+(secIsle.length?' ('+secIsle.length+')':''),aktif:secIsle.length>0,neden:'Teslim alınmış, sahibine dönmeyen kalıp seçin.',f:()=>isleDialog(secIsle)},
+      '-',
+      {ad:'Gelmeyenleri geri bildir',aktif:u.gon&&!u.iptalMi&&!mevcut.geriDondu&&sevkTum>0&&u.aliciYetki,neden:'Yolda kalıp yok ya da yetkiniz yok.',f:()=>islem('/api/talep/geribildir',{id:mevcut.id},'Teslim alınmayan '+sevkTum+' kalıp '+mevcut.bolum+' bölümüne geri bildirilsin mi? Talep kapanmaz; gönderen karar verir.')},
+      {ad:'Gönderimi iptal et (kalıplar geri döner)',aktif:u.gon&&!u.iptalMi&&!mevcut.geriDondu&&sevkTum>0&&sevkTum===satirlar.length&&u.gonderenYetki,neden:'Yalnız hiçbiri teslim alınmamışsa ve gönderen yetkiliyse.',f:()=>islem('/api/talep/gonderiptal',{id:mevcut.id},'Gönderim iptal edilsin mi? Kalıplar Planlandı durumuna ve eski lokasyonlarına döner.')},
+      {ad:'Talebi kapat (ulaşmayanlar iade)',aktif:u.gon&&!u.iptalMi&&!!mevcut.geriDondu&&u.gonderenYetki,neden:'Alıcı "gelmeyenleri geri bildir" yapınca gönderen kapatabilir.',f:()=>islem('/api/talep/gerikapat',{id:mevcut.id},'Talep kapatılsın mı? Ulaşmayan kalıplar "İade Edildi" olur ve eski lokasyon/rafına geri döner.')},
+      {ad:'Tekrar gönder',aktif:u.gon&&!u.iptalMi&&!!mevcut.geriDondu&&u.gonderenYetki,neden:'Geri bildirilmiş talep yok.',f:()=>islem('/api/talep/tekrar',{id:mevcut.id},'Ulaşmayan kalıplar tekrar gönderilsin mi?')},
+      '-',
+      {ad:'Seçili kalıpları talepten çıkar'+(sec.length?' ('+sec.length+')':''),aktif:sec.length>0&&!u.gon,neden:u.gon?'Gönderilmiş talepten kalıp çıkarılamaz.':'Önce kalıp seçin.',f:()=>{
+        if(sec.some(z=>z.SatirId>0)&&!confirm(sec.length+' kalıp bu talepten çıkarılsın mı?'))return;
+        satirlar=satirlar.filter(z=>!secili.has(z));secili=new Set();ciz()}},
+      {ad:'Tümünü seç',aktif:satirlar.length>0,f:()=>{secili=new Set(satirlar);secimBoya()}},
+      {ad:'Seçimi temizle',aktif:sec.length>0,f:()=>{secili=new Set();secimBoya()}}
+    ];
+    sagMenu(x,y,oge);
+  }
+  // sağ tık menüsü kalıp tablosunda çalışır; tablo dışında ve giriş kutularında tarayıcının kendi menüsü kalır
+  satirKutu.addEventListener('contextmenu',e=>{
+    if(e.target.closest('input,textarea,select'))return;
+    const tr=e.target.closest('tbody tr');
+    const i=tr?trler.indexOf(tr):-1;
+    if(i>=0&&!secili.has(satirlar[i])){secili=new Set([satirlar[i]]);sonIdx=i;secimBoya()}
+    e.preventDefault();menuAc(e.clientX,e.clientY);
+  });
+
   function ciz(){
-    satirKutu.innerHTML='';
+    satirKutu.innerHTML='';trler.length=0;secili=new Set(satirlar.filter(z=>secili.has(z)));
     const kilit=gonderildi();
     const tb=el('tbody');
     satirlar.forEach((s,i)=>{
       const st=el('span',{style:'padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap;background:'+(RENK[s.KalipStatu]||'#334155')},s.KalipStatu||'Planlandı');
       const ac=el('input',{value:s.Aciklama||'',placeholder:'Bu kalıp için açıklama',oninput:()=>{s.Aciklama=ac.value}});
-      tb.append(el('tr',{style:'cursor:default'},
+      const tr=el('tr',{style:'cursor:default;user-select:none',onmousedown:e=>satirFare(e,i),onmouseover:()=>satirUstunde(i)},
         el('td',null,el('b',null,s.KalipKodu)),el('td',null,s.ParcaAdi||''),el('td',null,(s.TalepSira||1)+'. talep'),el('td',null,s.TashihSayisi||0),
         el('td',null,st),el('td',null,s.Lokasyon||''),el('td',null,s.Raf||''),el('td',null,s.SahipBolum||''),el('td',{style:'min-width:220px'},ac),
         el('td',null,kilit?'':el('button',{class:'b kirmizi',style:'padding:4px 10px',onclick:()=>{
-          if(s.SatirId>0&&!confirm(s.KalipKodu+' bu talepten çıkarılsın mı?'))return;satirlar.splice(i,1);ciz()}},'✕'))));
+          if(s.SatirId>0&&!confirm(s.KalipKodu+' bu talepten çıkarılsın mı?'))return;satirlar.splice(i,1);ciz()}},'✕')));
+      tb.append(tr);trler[i]=tr;
     });
     if(!satirlar.length)tb.append(el('tr',null,el('td',{colspan:10,style:'color:#9aa3d6'},'Henüz kalıp eklenmedi.')));
+    satirKutu.append(el('div',{class:'arac',style:'margin:0 0 6px'},el('button',{class:'b gri',type:'button',style:'padding:5px 10px',onclick:e=>{const r=e.currentTarget.getBoundingClientRect();menuAc(r.left,r.bottom+4)}},'☰ İşlemler'),secBilgi,
+      el('span',{class:'sinir'},'Çoklu seçim: Ctrl / Shift + tıklayın ya da fareyi basılı tutup sürükleyin. Sağ tık = işlem menüsü.')));
     satirKutu.append(el('div',{class:'tw',style:'max-height:42vh'},el('table',{class:'tbl'},
       el('thead',null,el('tr',null,['Kalıp kodu','Kalıp adı','Kalıp sayacı','Tashih','Kalıp statü','Lokasyon','Raf','Sahip bölüm','Kalıba özel açıklama',''].map(h=>el('th',null,h)))),tb)));
+    secimBoya();
     bilgi.textContent=satirlar.length+' kalıp'+(mevcut?'  •  '+mevcut.talepNo+' düzenleniyor':'  •  yeni talep');
     akisCiz();
   }
@@ -1025,13 +1103,15 @@ SAYFALAR.talep=async function(k){
         }else akisKutu.append(el('div',{class:'sinir'},'Gönderen bölümün kararı bekleniyor.'));
       }else{
         if(sevk>0&&aliciYetki){
-          dugmeler.push(el('button',{class:'b yesil',onclick:teslimDialog},'📥 Teslim al ('+sevk+')'));
+          dugmeler.push(el('button',{class:'b yesil',onclick:()=>teslimDialog()},'📥 Teslim al ('+sevk+')'));
           dugmeler.push(el('button',{class:'b gri',onclick:()=>islem('/api/talep/geribildir',{id:mevcut.id},'Teslim alınmayan '+sevk+' kalıp '+mevcut.bolum+' bölümüne geri bildirilsin mi? Talep kapanmaz; gönderen karar verir.')},'Gelmeyenleri geri bildir'));
         }
         if(sevk>0&&sevk===satirlar.length&&gonderenYetki)dugmeler.push(el('button',{class:'b gri',onclick:()=>islem('/api/talep/gonderiptal',{id:mevcut.id},'Gönderim iptal edilsin mi? Kalıplar Planlandı durumuna ve eski lokasyonlarına döner.')},'Gönderimi iptal et'));
         if(sevk>0&&!aliciYetki)akisKutu.append(el('div',{class:'sinir'},'Teslim alma yetkisi '+alici+' bölümündeki yetkili kullanıcılardadır.'));
       }
     }
+    const rafaTum=satirlar.filter(uygunluk().rafaU);
+    if(rafaTum.length>0)dugmeler.push(el('button',{class:'b yesil',onclick:()=>rafaAlDialog(rafaTum)},'📍 Talebi rafa al ('+rafaTum.length+')'));
     if(isleAdaylari.length&&izin('raf_kaldir')&&gorunur(mevcut.alici))dugmeler.push(el('button',{class:'b turuncu',onclick:()=>isleDialog(isleAdaylari)},'🛠 İşleme al ('+isleAdaylari.length+')'));
     if(rafBekleyen.length&&izin('raf_kaldir')&&gorunur(mevcut.alici))dugmeler.push(el('button',{class:'b gri',onclick:()=>rafDialog(rafBekleyen)},'📍 Rafa kaldır ('+rafBekleyen.length+')'));
     else if(rafBekleyen.length)akisKutu.append(el('div',{class:'sinir'},'Rafı girilmemiş '+rafBekleyen.length+' kalıp var (grup lideri rafa kaldırınca girer).'));
@@ -1043,10 +1123,10 @@ SAYFALAR.talep=async function(k){
     l.sort((a,b)=>(b.AnaMi?1:0)-(a.AnaMi?1:0));
     return l.map(x=>x.Ad);
   }
-  function teslimDialog(){
+  function teslimDialog(alt){
     const alici=mevcut.alici,lokler=lokSecenekleri(alici);
     if(!lokler.length){bildir(alici+' bölümü için tanımlı lokasyon yok. Önce "Bölümler ve Lokasyonlar" ekranından tanımlayın.','h');return}
-    const adaylar=satirlar.filter(s=>s.KalipStatu==='Sevkediliyor');
+    const adaylar=alt&&alt.length?alt:satirlar.filter(s=>s.KalipStatu==='Sevkediliyor');
     const hepsiLok=sel(lokler,lokler[0],{}),hepsiRaf=sel(ME.rafler,'',{},'(raf)');
     const kutu=el('input',{type:'checkbox',checked:true});
     const satirEl=adaylar.map(s=>{
@@ -1100,6 +1180,46 @@ SAYFALAR.talep=async function(k){
         }catch(e){h2.append(el('div',{class:'hata'},e.message))}
       }},'İşleme al'),el('button',{class:'b gri',onclick:()=>m.kapat()},'Vazgeç'))),true);
   }
+  // Teslim al + rafa kaldır tek adımda: yoldaki kalıplar teslim alınır, hepsi için raf seçilir. Tüm kalıplar sonuçlanınca talep kendiliğinden kapanır.
+  function rafaAlDialog(secim){
+    if(!secim.length)return;
+    const alici=mevcut.alici,lokler=lokSecenekleri(alici);
+    if(secim.some(x=>x.KalipStatu==='Sevkediliyor')&&!lokler.length){bildir(alici+' bölümü için tanımlı lokasyon yok. Önce "Bölümler ve Lokasyonlar" ekranından tanımlayın.','h');return}
+    const hepsiRaf=sel(ME.rafler,'',{},'(hepsi için raf)'),hepsiLok=sel(lokler,lokler[0]||'',{});
+    const satirEl=secim.map(x=>({s:x,sevk:x.KalipStatu==='Sevkediliyor',sahibe:U(x.SahipBolum)===U(alici),
+      lk:x.KalipStatu==='Sevkediliyor'?sel(lokler,lokler[0],{}):null,rf:sel(ME.rafler,'',{},'-- raf seçin --')}));
+    hepsiRaf.onchange=()=>satirEl.forEach(x=>x.rf.value=hepsiRaf.value);
+    hepsiLok.onchange=()=>satirEl.forEach(x=>{if(x.lk)x.lk.value=hepsiLok.value});
+    const h2=el('div'),tb=el('tbody');
+    satirEl.forEach(x=>tb.append(el('tr',{style:'cursor:default'},el('td',null,el('b',null,x.s.KalipKodu)),el('td',null,x.s.ParcaAdi||''),
+      el('td',null,x.sevk?'Yolda → teslim alınır':x.s.KalipStatu),el('td',null,x.lk||(x.s.Lokasyon||'')),el('td',null,x.rf))));
+    const sevkSay=satirEl.filter(x=>x.sevk).length;
+    const m=modal(mevcut.talepNo+' - rafa al',el('div',null,
+      el('div',{class:'sinir'},(sevkSay?sevkSay+' kalıp teslim alınıp ':'')+satirEl.length+' kalıp rafa kaldırılır. Her kalıp için raf zorunludur. Talepteki tüm kalıplar sonuçlanınca talep kendiliğinden kapanır.'),
+      el('div',{class:'arac',style:'margin:8px 0'},sevkSay?[el('span',{class:'sinir'},'Lokasyon:'),hepsiLok]:null,el('span',{class:'sinir'},'Raf:'),hepsiRaf),
+      el('div',{class:'tw',style:'max-height:46vh'},el('table',{class:'tbl'},el('thead',null,el('tr',null,['Kalıp','Adı','Durum','Lokasyon','Raf *'].map(h=>el('th',null,h)))),tb)),h2,
+      el('div',{class:'arac',style:'margin-top:10px'},el('button',{class:'b yesil',onclick:async()=>{
+        h2.innerHTML='';
+        const eksik=satirEl.find(x=>!x.rf.value);
+        if(eksik){h2.append(el('div',{class:'hata'},eksik.s.KalipKodu+' için raf seçilmeli.'));return}
+        let teslimOldu=false;
+        try{
+          const sevkler=satirEl.filter(x=>x.sevk);
+          if(sevkler.length){
+            await api('/api/talep/teslim',{id:mevcut.id,satirlar:sevkler.map(x=>({SatirId:x.s.SatirId,Lokasyon:x.lk.value,Raf:x.sahibe?x.rf.value:'',Isle:false}))});
+            teslimOldu=true;
+          }
+          const rafla=satirEl.filter(x=>!(x.sevk&&x.sahibe));
+          let mesaj='Tamamlandı.';
+          if(rafla.length){const j=await api('/api/talep/rafa',{id:mevcut.id,satirlar:rafla.map(x=>({SatirId:x.s.SatirId,Raf:x.rf.value}))});mesaj=j.mesaj}
+          m.kapat();bildir(mesaj,'t');secili=new Set();await listeYenile();await yukle(mevcut.id);
+        }catch(e){
+          h2.append(el('div',{class:'hata'},(teslimOldu?'Kalıplar teslim alındı ama rafa kaldırılamadı: ':'')+e.message));
+          if(teslimOldu){await listeYenile();await yukle(mevcut.id)}
+        }
+      }},'Rafa al'),el('button',{class:'b gri',onclick:()=>m.kapat()},'Vazgeç'))),true);
+  }
+
   function rafDialog(adaylar){
     const hepsi=sel(ME.rafler,'',{},'(hepsi için raf)');
     const satirEl=adaylar.map(s=>({s,rf:sel(ME.rafler,'',{},'-- raf seçin --')}));
