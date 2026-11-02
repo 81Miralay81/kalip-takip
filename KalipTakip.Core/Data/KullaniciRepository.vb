@@ -220,6 +220,7 @@ Public NotInheritable Class ListeRepository
         sonuc.Columns.Add("Deger", GetType(String))
         sonuc.Columns.Add("Kullanim", GetType(Long))
         sonuc.Columns.Add("Listede", GetType(Boolean))
+        sonuc.Columns.Add("Bolum", GetType(String))
         Dim kullanim As New Dictionary(Of String, Long)(StringComparer.OrdinalIgnoreCase)
         Dim ks As String = KullanimKosulu(grup, bolum)
         Dim dtK As DataTable
@@ -234,19 +235,22 @@ Public NotInheritable Class ListeRepository
         Dim bk As String = BolumKosuluListe(grup, bolum)
         Dim dtL As DataTable
         If bk.Contains("?") Then
-            dtL = Db.Tablo("SELECT Deger FROM Liste WHERE Grup = ?" & bk & " ORDER BY Sira, Id", grup, TrMetin.Katla(bolum.Trim()))
+            dtL = Db.Tablo("SELECT Deger, Bolum FROM Liste WHERE Grup = ?" & bk & " ORDER BY Sira, Id", grup, TrMetin.Katla(bolum.Trim()))
+        ElseIf grup = GrupKalipTuru Then
+            ' bölüm seçilmemişken tüm türler (ortak + bölümlere atanmış) görünür; Bolum sütunu atamayı gösterir
+            dtL = Db.Tablo("SELECT Deger, Bolum FROM Liste WHERE Grup = ? ORDER BY Sira, Id", grup)
         Else
-            dtL = Db.Tablo("SELECT Deger FROM Liste WHERE Grup = ?" & bk & " ORDER BY Sira, Id", grup)
+            dtL = Db.Tablo("SELECT Deger, Bolum FROM Liste WHERE Grup = ?" & bk & " ORDER BY Sira, Id", grup)
         End If
         For Each r As DataRow In dtL.Rows
             Dim d As String = Convert.ToString(r("Deger"))
             If Not eklenen.Add(d) Then Continue For
             Dim n As Long = 0
             kullanim.TryGetValue(d, n)
-            sonuc.Rows.Add(d, n, True)
+            sonuc.Rows.Add(d, n, True, Convert.ToString(r("Bolum")))
         Next
         For Each kv As KeyValuePair(Of String, Long) In kullanim
-            If eklenen.Add(kv.Key) Then sonuc.Rows.Add(kv.Key, kv.Value, False)
+            If eklenen.Add(kv.Key) Then sonuc.Rows.Add(kv.Key, kv.Value, False, "")
         Next
         Return sonuc
     End Function
@@ -331,6 +335,44 @@ Public NotInheritable Class ListeRepository
             End Using
         End Using
         Return sayi
+    End Function
+
+    ''' <summary>Kalıp türünü topluca bir sahip bölüme bağlar: bu türdeki tüm kalıpların (Kalıp Takip kayıtları + kalıp tanımı) sahip bölümü yazılır ve tür listede yalnızca o bölüme ait olur. Döner: etkilenen kalıp sayısı.</summary>
+    Public Shared Function BolumeAta(deger As String, bolum As String, kullanici As String) As Integer
+        Dim d As String = If(deger, "").Trim()
+        Dim b As String = If(bolum, "").Trim().ToUpper(Kultur.Tr)
+        If d.Length = 0 Then Throw New InvalidOperationException("Değer boş olamaz.")
+        If b.Length = 0 Then Throw New InvalidOperationException("Önce sahip bölümü seçin.")
+        Dim dk As String = TrMetin.Katla(d)
+        Dim kodlar As New List(Of String)()
+        Dim dt As DataTable = Db.Tablo("SELECT DISTINCT ParcaKodu AS K FROM Kalip WHERE ParcaKodu IS NOT NULL AND TRIM(ParcaKodu) <> '' AND KATLA(TRIM(COALESCE(KalipTuru, ''))) = ? " &
+                                       "UNION SELECT KalipKodu FROM KalipTanim WHERE KATLA(TRIM(COALESCE(KalipTuru, ''))) = ?", dk, dk)
+        For Each r As DataRow In dt.Rows
+            kodlar.Add(Convert.ToString(r("K")))
+        Next
+        Dim n As Integer = 0
+        If kodlar.Count > 0 Then n = KalipListeRepository.SahipYaz(kodlar, b, kullanici)
+        Using c As SQLiteConnection = Db.Ac()
+            Using tx As SQLiteTransaction = c.BeginTransaction()
+                Dim sira As Integer
+                Using cmd As SQLiteCommand = Db.Komut(c, tx, "SELECT COALESCE(MIN(Sira), 0) FROM Liste WHERE Grup = ? AND KATLA(TRIM(Deger)) = ?", GrupKalipTuru, dk)
+                    sira = Convert.ToInt32(cmd.ExecuteScalar())
+                End Using
+                If sira = 0 Then
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "SELECT COALESCE(MAX(Sira), 0) + 1 FROM Liste WHERE Grup = ?", GrupKalipTuru)
+                        sira = Convert.ToInt32(cmd.ExecuteScalar())
+                    End Using
+                End If
+                Using cmd As SQLiteCommand = Db.Komut(c, tx, "DELETE FROM Liste WHERE Grup = ? AND KATLA(TRIM(Deger)) = ?", GrupKalipTuru, dk)
+                    cmd.ExecuteNonQuery()
+                End Using
+                Using cmd As SQLiteCommand = Db.Komut(c, tx, "INSERT INTO Liste (Grup, Deger, Sira, Bolum) VALUES (?, ?, ?, ?)", GrupKalipTuru, d, sira, b)
+                    cmd.ExecuteNonQuery()
+                End Using
+                tx.Commit()
+            End Using
+        End Using
+        Return n
     End Function
 
     ''' <summary>Değeri hem listeden hem kayıtlardan kaldırır: o değeri taşıyan kalıp kayıtlarının alanı boşaltılır (bölüm seçiliyse yalnız o bölümün kalıpları). Etkilenen kayıt sayısını döndürür.</summary>

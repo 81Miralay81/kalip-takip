@@ -454,6 +454,15 @@ namespace KalipTakip.Sunucu
                         Json(ctx, 200, new { mesaj = "Ad değiştirildi" + (n > 0 ? "; " + n + " kayıt güncellendi." : ".") });
                     }
                     return true;
+                case "/api/liste/ata":
+                    YoneticiGerekli(k);
+                    {
+                        Dictionary<string, object> g = Govde(ctx);
+                        string bol = Metin(g, "bolum");
+                        int n = ListeRepository.BolumeAta(Metin(g, "deger"), bol, k.KullaniciAdi);
+                        Json(ctx, 200, new { mesaj = "\"" + Metin(g, "deger") + "\" türü " + bol.ToUpper(new System.Globalization.CultureInfo("tr-TR")) + " bölümüne bağlandı; " + n + " kalıbın sahip bölümü güncellendi." });
+                    }
+                    return true;
                 case "/api/liste/temizle":
                     YoneticiGerekli(k);
                     {
