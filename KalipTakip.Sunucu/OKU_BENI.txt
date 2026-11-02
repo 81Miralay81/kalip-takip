@@ -1,0 +1,74 @@
+KALIP TAKIP - TELEFON SUNUCUSU
+
+1) KalipTakipSunucu.exe dosyasini acin (YONETICI IZNI GEREKMEZ). Pencere adresleri yazar:  http://192.168.x.x:8080/
+   Windows guvenlik duvari sorarsa "Ozel aglar" icin izin verin. Pencere acik kaldigi surece telefonlar baglanabilir.
+2) Telefon ayni Wi-Fi'de olmali. Chrome'da o adresi acin, kullanici adi/parola masaustuyle ayni.
+3) Veritabani: exe ile ayni klasordeki KalipTakip.db (ya da .config icindeki VeritabaniYolu).
+
+KAMERA ILE BARKOD (her telefonda bir kez, yonetici gerekmez)
+- Chrome adres cubuguna yazin:  chrome://flags/#unsafe-treat-insecure-origin-as-secure
+- Kutuya sunucu adresini yazin (ornek: http://192.168.1.20:8080), secenegi "Enabled" yapin, Chrome'u yeniden baslatin.
+- Sayfayi acinca Ara / Raf / Teslim ekranlarinda kamera dugmesi cikar.
+- Sunucu PC'nin IP'si degisirse flag'deki adresi guncelleyin (PC'ye sabit IP verilmesi onerilir).
+
+YAPAY ZEKA ILE YAZI OKUMA (sicak dovme / kazima kalip kodlari icin onerilen yontem)
+- Ucretsiz Gemini anahtari: https://aistudio.google.com/apikey adresine Google hesabiyla girin, "Create API key" deyin, anahtari kopyalayin.
+- KalipTakipSunucu.exe.config icindeki GeminiAnahtar degerine yapistirin, sunucuyu yeniden baslatin.
+- Sunucu bilgisayarinin generativelanguage.googleapis.com adresine internet erisimi olmali (sirket guvenlik duvarinda izin gerekebilir).
+- Kamera penceresinde "Yapay zekayla oku" dugmesi cikar. Yaziyi cerceveye alip dugmeye basin; okunan metin sistemdeki kodlarla eslestirilip onerilir.
+- Her basista tek bir kucuk fotograf (kirpilmis kare) gonderilir, sunucuda saklanmaz. Ucretsiz katmanda Google verileri iyilestirme icin kullanabilir; sirket politikaniza bakin.
+- Istege bagli: Claude API icin AnthropicAnahtar yazilabilir (ucretli).
+
+BOLUM / KALIP YETKILENDIRME (tarayici surumu)
+- Kullanicilar ekraninda her kullaniciya birden fazla bolum atanabilir ya da "Tum bolumler" isaretlenir. Mevcut kullanicilar "Tum bolumler" olarak gelir (davranis degismez); kisitlamak icin bu kutuyu kaldirip bolumleri isaretleyin.
+- Kalip - Bolum Atamasi ekrani: kalibin sahibi bolum atanir (liste ya da yapistirilan kod listesiyle). Kisitli kullanici yalniz kendi bolumlerinin (ve sahibi atanmamis) kalip/taleplerini gorur.
+- Talepte "Tumune statu uygula", teslim alirken kalip basina lokasyon (alt lokasyon dahil) ve raf secilir. Kalip detayinda hem Lokasyon hem Ana lokasyon gorunur.
+
+TALEP AKISI (gonder / teslim al / geri bildir) VE BILDIRIMLER
+- Talepte "Gonderen bolum" ve "Alici bolum" secilir (alici varsayilan KALIPHANE). Kalip bulundugu bolumden gonderilir; baska bolume teslim edilmis kalip geri gonderilmeden yeni talebe eklenemez.
+- Akis: Planlandi -> "Talep Gonder" -> Sevkediliyor (kalip gonderen bolumun ana lokasyonuna gecer, eski lokasyon/raf saklanir)
+  -> alici "Teslim al": lokasyon secmek zorunlu. Kalip sahibine donuyorsa raf zorunlu, durum Tamamlandi ve Tamir Adedi +1; degilse Teslim Alindi.
+- Teslim alinmayanlar: alici "Gelmeyenleri geri bildir" der, talep acik kalir, gonderene bildirim gider.
+  Gonderen "Talebi kapat" derse kalip Iade Edildi olur ve eski lokasyon/rafina doner; "Tekrar gonder" derse yeniden yola cikar.
+- Grup lideri "Rafa kaldir" ile raf girer (zorunlu). Yetkiler: Talebi gonderme, Talep teslim alma, Rafa kaldirma (Kullanicilar > Yetkiler).
+- Bildirim: Portal > Bildirim Ayarlari. Telegram: @BotFather ile bot olusturup anahtari girin, kullanicilar botu acip mesaj yazsin,
+  "Bota yazanlari bul" ile kimlikleri alip Kullanicilar sayfasinda kullaniciya yazin. E-posta: SMTP bilgilerini BT'den alin.
+  Kullanicida "Bildirim al" isaretli ve ilgili bolumde olanlara mesaj gider. Gonderim kaydi ayni sayfada gorunur.
+- Portalda gelen / geri donen talepler ve rafa kaldirilacak kalip sayisi rozet olarak gorunur.
+
+ISLENIYOR DURUMU VE BOLUM RAPORU (son ekleme)
+- Kalıphane tarafında (kalıp sahibine dönmeyen) Teslim Alındı kalıp, tamir için raftan indirilince "İşleniyor" olur.
+  Talep sayfasında "İşleme al" düğmesi veya teslim alırken "İşleme al" kutusu; uyarı çıkar, raf boşalır, grup liderlerine (raf kaldırma yetkisi + bildirim al) bildirim gider.
+  Rafa koyunca statü Teslim Alındı kalır. Sahibine dönen kalıp yine Tamamlandı olur. Eski "İşleme Alındı" kayıtları açılışta otomatik İşleniyor yapılır.
+- Kalıp Takip: arama araç çubuğunda "Tüm bölümler" listesi; Excel ve İstatistik de bu bölüme göre süzülür (kalıp sahibi bölüm).
+- Portal mobil için düzenlendi (telefon genişliğinde taşma yok, modallar tam ekran).
+- Güncelleme sonrası: Visual Studio'da Rebuild Solution (Core değişti), sunucuyu yeniden başlat, tarayıcıda Ctrl+F5.
+
+CIHAZ ERISIMI (parola dogru olsa bile yalnizca onayli cihaz girer)
+- Portal > "Cihaz Erisimleri" (yonetici). Her tarayici ilk giriste rastgele bir cihaz kodu uretir (sunucuda yalnizca ozeti saklanir).
+  MAC (sunucuyla ayni agdaki cihazlar icin), IP, cihaz adi ve tarayici bilgisi kaydedilir. Tarayici gercek MAC/HWID okuyamaz; karar cihaz koduna gore verilir.
+- Kontrol varsayilan KAPALI: bu surede giris yapan cihazlar otomatik "Onayli" kaydedilir. Listeyi kontrol edip tanimadiginizi silin, sonra "Cihaz kontrolu acik"i isaretleyin.
+- Acikken yeni cihaz: giris reddedilir, yoneticiye (bildirim al isaretliyse Telegram/e-posta + portal rozeti) istek duser. Onaylayinca girer; Reddet/Sil acik oturumlari kapatir.
+- Sunucu bilgisayarinin kendisi (localhost) kontrolden muaftir (yonetici kilitlenirse kurtarma yolu). Kullanici bazinda "muaf" isaretlenebilir.
+- Exe de ayni kontrolu yapar (Windows makine kimligi + MAC); exe veritabanina dogrudan baglandigi icin asil koruma web uzerindendir.
+- Cihaz kodu tarayicida 3 yerde saklanir (yerel depo, cerez, IndexedDB); biri silinirse digerlerinden geri yazilir.
+- Yeni cihazda "Cihaz adi" kutusu zorunludur (yonetici cihazi tanisin). Cihaz Erisimleri listesinde cihaz turu, tarayici, isletim sistemi,
+  MAC, IP ve kodun hangi depolarda bulundugu gorunur. "Tum site verilerini temizle" uc depoyu birden siler; o cihaz yeniden onay ister.
+
+--- 30.10.2026-H: Kamera / kod arama ---
+- Okunan ya da yazılan kod, kodların İÇİNDE yan yana geçiyorsa listelenir (S01833 -> SKS01833-3,4,5...). S/5, O/0, I/1, B/8, Z/2, G/6 karışıklığı tolere edilir.
+- Liste dikey: kod + proses + açıklama (Kalıp Listesi tanımı, yoksa Kalıp Takip parça adı).
+- Kodu elle yazarken canlı liste çıkar. Yıldız (*) joker: 1123*-1 = 1123 geçen ve -1 ile biten; DK1123* = sonu serbest.
+- Kalıp Listesi / Talep kalıp aramasında da yıldız çalışır.
+- Yakınlaştırma çubuğu her telefonda var (donanım zoom yoksa dijital).
+
+--- 30.10.2026-I: Kamerayla raf okutma ---
+- Kalıp detayında "Rafı kaydet"in yanındaki 📷 ve Hızlı İşlem > Rafa yerleştir > Raf yanındaki 📷: raf etiketi okutulur.
+- Raf sistemde varsa "Rafı kalıba kaydet" (Hızlı İşlemde "Rafı seç"), yoksa "Raf oluştur" düğmesi çıkar; oluşturunca aynı ekranda kaydet düğmesi gelir.
+- Benzer raflar önerilir; elle yazınca da canlı raf listesi çıkar. Yeni API: /api/raflar/ekle.
+- 30.10.2026-J: Raflar sayfasında '+ Raf ekle' yanındaki 📷 ile raf okutulur; yoksa oluşturulur, varsa 'listede zaten var' denir.
+- 30.10.2026-K: Yapay zeka okumasında boşluk/tiresiz yazı (1123 K 1, 1123K1) birleştirilmeden parçalar arasına * konarak aranır.
+- 30.10.2026-L: Arama ekranlarında (Kalıp Takip, Kalıp Listesi, Ara) yapay zeka okuması doğrudan arama kutusuna yazılır (boşluklu okumada * ile), arama arkadaki listede yapılır; kamera ikinci liste göstermez. Talep/hızlı işlem/raf ekranlarında seçim listesi aynen durur.
+- 30.10.2026-M: L'deki 'doğrudan arama kutusuna yaz' davranışı kullanıcı isteğiyle kapatıldı; kamera tüm ekranlarda seçim listesiyle (sürüm K davranışı) çalışır. Kod ops.arama ile hazır, istenirse açılır.
+- 02.11.2026-N: Kalıp etiketlerinde yalnız 'Tamir: N' ve 'Aktif/Hurda' durumu gösterilir (ilave/yeni/aktif adedi kaldırıldı). Kalıp Listesine seçilebilir 'Durum (Aktif/Hurda)' sütunu eklendi (Hurda kaydı varsa Hurda).
+- 02.11.2026-O: Günlük otomatik yedek: veritabanının yanındaki Yedek klasörüne KalipTakip_YYYY-AA-GG.db (son 30 saklanır), sunucu açılışında ve saatte bir kontrol.

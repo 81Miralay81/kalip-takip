@@ -1,0 +1,23 @@
+name: Derle
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  derle:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Derle (Release)
+        run: dotnet build KalipTakip.sln -c Release
+      - name: Sunucu paketi
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force paket | Out-Null
+          Copy-Item KalipTakip.Sunucu/bin/Release/net48/* paket -Recurse -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KalipTakipSunucu
+          path: paket

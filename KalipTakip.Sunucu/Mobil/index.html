@@ -1,0 +1,1590 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#3b2a8f">
+<link rel="manifest" href="/manifest.json">
+<title>Kalıp Takip</title>
+<style>
+:root{--bg:#10142b;--kart:#171c3a;--kart2:#1f2548;--kenar:#2c3366;--yazi:#eef1ff;--soluk:#9aa3d6;--mor:#7c3aed;--mavi:#3b82f6;--yesil:#10b981;--kirmizi:#ef4444;--sari:#fde047;--turuncu:#f59e0b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--yazi);font:15px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{min-height:100vh}
+header{position:sticky;top:0;z-index:5;background:linear-gradient(90deg,#2a1d78,#4c2fb8);padding:10px 16px;display:flex;align-items:center;gap:10px}
+header h1{font-size:18px;margin:0;flex:1;cursor:pointer}
+header small{color:#d3d9ff;font-size:12px}
+header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:13px;cursor:pointer}
+main{padding:14px;max-width:1500px;margin:0 auto}
+h2{margin:6px 0 12px;font-size:20px}
+h3{margin:14px 0 6px;font-size:15px;color:#c7d2fe}
+.kart{background:var(--kart);border:1px solid var(--kenar);border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--soluk);margin:8px 0 3px}
+input,select,textarea{width:100%;background:var(--kart2);border:1px solid var(--kenar);color:var(--yazi);border-radius:10px;padding:10px 12px;font-size:15px;outline:none;font-family:inherit}
+input:focus,select:focus,textarea:focus{border-color:var(--mavi)}
+input[readonly],input:disabled,select:disabled{opacity:.6}
+input[type=checkbox]{width:auto;margin-right:6px}
+button.b{border:0;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;color:#fff;background:linear-gradient(90deg,var(--mavi),var(--mor));cursor:pointer}
+button.b.yesil{background:linear-gradient(90deg,var(--yesil),#059669)}
+button.b.kirmizi{background:linear-gradient(90deg,var(--kirmizi),#be185d)}
+button.b.turuncu{background:linear-gradient(90deg,var(--turuncu),#ec4899)}
+button.b.gri{background:#3a4170}
+button.b:disabled{opacity:.5;cursor:default}
+.arac{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.arac>input{flex:1 1 220px;min-width:160px}
+.arac>select{flex:0 1 200px}
+.alan{display:flex;gap:10px;flex-wrap:wrap}
+.alan>div{flex:1 1 180px;min-width:140px}
+.portal{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.pk{border-radius:16px;padding:20px;color:#fff;cursor:pointer;min-height:120px;border:0;text-align:left;font-family:inherit}
+.pk b{font-size:18px;display:block;margin-bottom:6px}
+.pk span{font-size:13px;opacity:.9}
+.tw{overflow:auto;max-height:68vh;border:1px solid var(--kenar);border-radius:12px}
+table.tbl{border-collapse:collapse;width:100%;font-size:13px}
+.tbl th{position:sticky;top:0;background:#2a2f66;text-align:left;padding:8px 10px;white-space:nowrap;z-index:1}
+.tbl td{padding:7px 10px;border-top:1px solid var(--kenar);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
+.tbl tr.sec td{background:#2d3478}
+.tbl tbody tr{cursor:pointer}
+.tbl tbody tr:hover td{background:#252b5c}
+.tbl td input,.tbl td select{padding:6px 8px;font-size:13px}
+.et{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--kart2);color:#cbd2ff;display:inline-block;margin:2px 4px 2px 0}
+.hata{background:#4c1d1d;color:#fecaca;border-radius:10px;padding:10px;margin:8px 0;font-size:14px}
+.tamam{background:#064e3b;color:#a7f3d0;border-radius:10px;padding:10px;margin:8px 0;font-size:14px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:flex-start;justify-content:center;z-index:30;overflow:auto;padding:20px 10px}
+.modal>.ic{background:var(--bg);border:1px solid var(--kenar);border-radius:16px;padding:16px;width:100%;max-width:760px}
+.modal>.ic.genis{max-width:1100px}
+.sekmeler{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+.sekmeler button{border:0;background:var(--kart2);color:var(--soluk);padding:8px 14px;border-radius:9px;cursor:pointer}
+.sekmeler button.on{background:linear-gradient(90deg,var(--mavi),var(--mor));color:#fff}
+.iki{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;align-items:start}
+@media(max-width:1000px){.iki{grid-template-columns:minmax(0,1fr)!important}.iki>*{min-width:0}}
+.oneri{position:absolute;z-index:40;background:#1e2350;border:1px solid var(--mavi);border-radius:10px;max-height:300px;overflow:auto;min-width:420px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.oneri div{padding:8px 12px;cursor:pointer;font-size:14px;white-space:nowrap}
+.oneri div.on,.oneri div:hover{background:#3b4aa8}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:60;padding:12px 18px;border-radius:12px;max-width:90vw;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.toast.t{background:#065f46}.toast.h{background:#991b1b}.toast.b{background:#1e3a8a}
+#giris{max-width:420px;margin:12vh auto 0;padding:0 16px}
+#giris h2{text-align:center}
+.sinir{color:var(--soluk);font-size:13px;margin:6px 0}
+video{width:100%;border-radius:12px;margin-top:8px;background:#000}
+.combo{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24'><path fill='%239aa3d6' d='M7 10l5 5 5-5z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+.izg{margin:10px 0 2px;font-weight:700;color:#c7d2fe}
+.izl label{display:flex;align-items:center;color:var(--yazi);font-size:14px;margin:3px 0}
+@media(max-width:700px){
+html,body{font-size:15px;overflow-x:hidden}
+header{padding:8px 10px;flex-wrap:wrap;gap:6px}
+header h1{font-size:16px;flex:1 1 auto}
+header small{order:3;flex:1 0 100%;font-size:11px}
+header button{padding:8px 10px;min-height:38px}
+main{padding:10px 8px}
+h2{font-size:18px}
+.kart{padding:10px;border-radius:12px}
+input,select,textarea{font-size:16px;min-height:42px}
+input[type=checkbox]{min-height:0;width:20px;height:20px}
+button.b{min-height:42px;padding:9px 12px}
+.arac{gap:6px}
+.arac>input{flex:1 1 100%;min-width:0}
+.arac>select{flex:1 1 calc(50% - 6px)!important;min-width:0}
+.arac>button{flex:1 1 auto}
+.alan>div{flex:1 1 100%;min-width:0}
+.portal{grid-template-columns:1fr 1fr;gap:10px}
+.pk{padding:14px;min-height:96px}
+.pk b{font-size:15px}
+.tbl td{max-width:180px;padding:8px}
+.tw{max-height:60vh}
+.modal{padding:0}
+.modal>.ic,.modal>.ic.genis{max-width:100%!important;min-height:100%;border-radius:0;border-left:0;border-right:0;padding:12px 10px}
+.oneri{min-width:0;max-width:calc(100vw - 16px)}
+.oneri div{white-space:normal}
+.toast{bottom:12px;left:8px;right:8px;transform:none;max-width:none;text-align:center}
+.sekmeler button{padding:9px 12px;flex:1 1 auto}
+#giris{margin-top:6vh}
+}
+@media(max-width:380px){.portal{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="giris" style="display:none">
+  <h2>Kalıp Takip</h2>
+  <div class="kart">
+    <label>Kullanıcı adı</label><input id="gAd" autocomplete="username">
+    <label>Parola</label><input id="gParola" type="password" autocomplete="current-password">
+    <label>Cihaz adı <span style="opacity:.7">(bu cihazı tanımlayın, örn. "Ali - telefon"; yeni cihazda zorunlu)</span></label><input id="gCihazAd" autocomplete="off" maxlength="60">
+    <div id="gHata"></div>
+    <p><button class="b" id="gBtn" style="width:100%">Giriş yap</button></p>
+  </div>
+</div>
+<div id="uygulama" style="display:none">
+  <header><h1 id="baslik">Kalıp Takip</h1><small id="kisi"></small><button id="portalBtn">Portal</button><button id="cikis">Çıkış</button></header>
+  <main id="icerik"></main>
+</div>
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const SURUM='02.11.2026-O';
+let T=localStorage.getItem('kt_token'), ME=null;
+
+function el(tag,props,...kids){
+  const e=document.createElement(tag);
+  if(props)for(const k in props){const v=props[k];
+    if(k==='class')e.className=v;else if(k==='style')e.style.cssText=v;
+    else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);
+    else if(k==='value')e.value=v==null?'':v;
+    else if(k==='checked'||k==='disabled'||k==='readOnly')e[k]=!!v;
+    else if(v!==null&&v!==undefined&&v!==false)e.setAttribute(k,v)}
+  kids.flat(9).forEach(c=>{if(c==null||c===false)return;e.append(c.nodeType?c:document.createTextNode(String(c)))});
+  return e;
+}
+function sel(secenekler,deger,props,bos){
+  const s=el('select',props);
+  if(bos!==undefined)s.append(el('option',{value:''},bos));
+  secenekler.forEach(o=>{const v=typeof o==='object'?o.v:o,t=typeof o==='object'?o.t:o;s.append(el('option',{value:v},t))});
+  if(deger!=null&&deger!==''&&![...s.options].some(o=>o.value===String(deger)))s.append(el('option',{value:deger},deger));
+  s.value=deger==null?'':deger;
+  return s;
+}
+// Tüm seçenekleri tıklayınca / odaklanınca açan, yazdıkça süzen açılır liste (datalist yerine).
+function combo(input,liste){
+  input.classList.add('combo');input.setAttribute('autocomplete','off');
+  let kutu=null,filtre=false;
+  const kapat=()=>{if(kutu){kutu.remove();kutu=null}};
+  function ac(){
+    kapat();
+    const t=filtre?input.value.toLocaleLowerCase('tr'):'';
+    const l=liste.filter(x=>!t||String(x).toLocaleLowerCase('tr').includes(t));
+    if(!l.length)return;
+    const r=input.getBoundingClientRect();
+    kutu=el('div',{class:'oneri',style:'position:fixed;left:'+r.left+'px;top:'+(r.bottom+2)+'px;min-width:'+r.width+'px;max-width:90vw'},
+      l.map(x=>el('div',{onmousedown:e=>{e.preventDefault();input.value=x;input.dispatchEvent(new Event('input'));input.dispatchEvent(new Event('change'));kapat()}},x)));
+    document.body.append(kutu);
+  }
+  input.addEventListener('focus',()=>{filtre=false;ac()});
+  input.addEventListener('click',()=>{if(!kutu){filtre=false;ac()}});
+  input.addEventListener('input',e=>{if(e.isTrusted){filtre=true;ac()}});
+  input.addEventListener('blur',()=>setTimeout(kapat,150));
+  input.addEventListener('keydown',e=>{if(e.key==='Escape')kapat()});
+  document.addEventListener('scroll',kapat,true);
+  return input;
+}
+function veriListe(id,liste){return el('datalist',{id},liste.map(x=>el('option',{value:x})))}
+
+function bildir(m,tur){
+  const t=el('div',{class:'toast '+(tur||'b')},m);document.body.append(t);
+  setTimeout(()=>t.remove(),tur==='h'?7000:3500);
+}
+async function api(yol,govde){
+  const o={headers:{'X-Token':T||''}};
+  if(govde!==undefined){o.method='POST';o.body=JSON.stringify(govde);o.headers['Content-Type']='application/json'}
+  let r;
+  try{r=await fetch(yol,o)}catch(e){throw new Error('Sunucuya ulaşılamadı. Bağlantınızı kontrol edin.')}
+  let j={};try{j=await r.json()}catch(e){}
+  if(r.status===401&&T&&yol!=='/api/giris'){oturumKapat();throw new Error(j.hata||'Oturum kapandı.')}
+  if(!r.ok)throw new Error(j.hata||'Hata ('+r.status+')');
+  return j;
+}
+async function indir(yol,ad){
+  try{
+    const r=await fetch(yol,{headers:{'X-Token':T||''}});
+    if(!r.ok){let j={};try{j=await r.json()}catch(e){}throw new Error(j.hata||'İndirilemedi')}
+    const b=await r.blob(),u=URL.createObjectURL(b),a=el('a',{href:u,download:ad});document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),2000);
+  }catch(e){bildir(e.message,'h')}
+}
+function izin(k){return ME&&ME.izinler.indexOf(k)>=0}
+function qs(o){return Object.keys(o).filter(k=>o[k]!==''&&o[k]!=null).map(k=>k+'='+encodeURIComponent(o[k])).join('&')}
+
+// ---- biçimleme
+function fmtTarih(v){
+  if(v==null||v==='')return '';
+  const m=/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}:\d{2}))?/.exec(v);
+  return m?(m[3]+'.'+m[2]+'.'+m[1]+(m[4]?' '+m[4]:'')):String(v);
+}
+function fmtSayi(v){if(v==null||v==='')return '';const n=Number(v);return isNaN(n)?String(v):n.toLocaleString('tr-TR',{maximumFractionDigits:2})}
+function fmt(tip,v){if(v==null)return '';if(tip==='Tarih')return fmtTarih(v);if(tip==='Ondalik')return fmtSayi(v);return String(v)}
+function bugun(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function iso10(v){return v?String(v).slice(0,10):''}
+// "1425+1220", "1100/60", "(5+3)*2" gibi basit işlemleri hesaplar; geçersizse null. Boş metin -> null.
+function hesapla(m){
+  if(m==null)return null;
+  let t=String(m).trim();
+  if(!t)return null;
+  t=t.replace(/,/g,'.');
+  if(!/^[0-9.+\-*\/()\s]+$/.test(t))return null;
+  try{const r=Function('"use strict";return ('+t+')')();return (typeof r==='number'&&isFinite(r))?r:null}catch(e){return null}
+}
+function yaz2(d){return (Math.round(d*100)/100).toString().replace('.',',')}
+function sayiMetin(v){return v==null?'':String(v).replace('.',',')}
+
+function tablo(kolonlar,satirlar,opt){
+  opt=opt||{};
+  const tb=el('tbody');
+  satirlar.forEach((s,i)=>{
+    const tr=el('tr',{onclick:()=>{if(opt.sec)opt.sec(s,tr,i)}},kolonlar.map(k=>el('td',{title:fmt(k.tip,s[k.alan])},fmt(k.tip,s[k.alan]))));
+    tb.append(tr);
+  });
+  if(!satirlar.length)tb.append(el('tr',null,el('td',{colspan:kolonlar.length,style:'color:#9aa3d6'},'Kayıt yok.')));
+  return el('div',{class:'tw',style:opt.stil||''},el('table',{class:'tbl'},el('thead',null,el('tr',null,kolonlar.map(k=>el('th',null,k.baslik)))),tb));
+}
+function secIsaretle(tr){const p=tr.parentNode;p.querySelectorAll('tr.sec').forEach(x=>x.classList.remove('sec'));tr.classList.add('sec')}
+
+function aramayaOdak(){setTimeout(()=>{const q=document.querySelector('#icerik .arac input:not([type=file])');if(q){q.focus();q.select()}},50)}
+function modal(baslik,icerik,genis){
+  const ov=el('div',{class:'modal'});
+  const kapat=()=>ov.remove();
+  const ic=el('div',{class:'ic'+(genis?' genis':'')},
+    el('div',{style:'display:flex;align-items:center;margin-bottom:6px'},el('h2',{style:'flex:1;margin:0'},baslik),el('button',{class:'b gri',onclick:kapat},'✕')),icerik);
+  ov.append(ic);
+  ov.addEventListener('mousedown',e=>{if(e.target===ov)ov._md=true;else ov._md=false});
+  ov.addEventListener('click',e=>{if(e.target===ov&&ov._md)kapat()});
+  document.body.append(ov);
+  return {kapat,ov};
+}
+async function onay(m){return confirm(m)}
+
+// ---- kamera: barkod + yapay zeka ile yazı okuma (dövme / nokta vuruş kalıp kodları)
+const kamVar=window.isSecureContext&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+const KOD={liste:null,adlar:{}};
+async function kodlariYukle(){
+  if(KOD.liste)return KOD.liste;
+  try{const j=await api('/api/kodlar');KOD.liste=j.kodlar||[];KOD.adlar=j.adlar||{}}catch(e){KOD.liste=[];KOD.adlar={}}
+  return KOD.liste;
+}
+const BENZER_HARF={'O':'0','0':'O','Q':'0','D':'0','I':'1','L':'1','1':'I','S':'5','5':'S','B':'8','8':'B','Z':'2','2':'Z','G':'6','6':'G'};
+function temizKod(x){return (x||'').toUpperCase().replace(/[^A-Z0-9-]/g,'')}
+function mesafe(a,b){
+  const n=a.length,m=b.length;let onceki=[];for(let j=0;j<=m;j++)onceki[j]=j;
+  for(let i=1;i<=n;i++){
+    const simdi=[i];
+    for(let j=1;j<=m;j++){
+      const ayni=a[i-1]===b[j-1];
+      const sub=ayni?0:(BENZER_HARF[a[i-1]]===b[j-1]?0.4:1);
+      simdi[j]=Math.min(onceki[j]+1,simdi[j-1]+1,onceki[j-1]+sub);
+    }
+    onceki=simdi;
+  }
+  return onceki[m];
+}
+function benzerKodlar(metin,liste,adet){
+  const t=temizKod(metin);
+  if(t.length<4)return [];
+  const sonuc=[];
+  for(const k of liste){
+    const kk=temizKod(k);
+    if(Math.abs(kk.length-t.length)>2)continue;
+    const d=mesafe(t,kk);
+    if(d<=1.5)sonuc.push({k,d});
+  }
+  sonuc.sort((x,y)=>x.d-y.d);
+  return sonuc.slice(0,adet);
+}
+function aiKare(video){
+  // Ekranda görünen şerit (object-fit:cover) içindeki sarı çerçeve, kameranın ham görüntüsündeki karşılığına çevrilir.
+  const vw=video.videoWidth,vh=video.videoHeight,W=video.clientWidth||vw,H=video.clientHeight||vh;
+  const ol=Math.max(W/vw,H/vh),ox=(vw*ol-W)/2,oy=(vh*ol-H)/2;
+  const zk=video._zoom||1,bx=W/2+(W*0.08-W/2)/zk,by=H/2+(H*0.20-H/2)/zk,bw=W*0.84/zk,bh=H*0.60/zk;
+  let sx=Math.round((bx+ox)/ol),sy=Math.round((by+oy)/ol),sw=Math.round(bw/ol),sh=Math.round(bh/ol);
+  sx=Math.max(0,Math.min(sx,vw-1));sy=Math.max(0,Math.min(sy,vh-1));sw=Math.min(sw,vw-sx);sh=Math.min(sh,vh-sy);
+  const o=Math.min(1,560/sw),w=Math.round(sw*o),h=Math.round(sh*o);
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  c.getContext('2d').drawImage(video,sx,sy,sw,sh,0,0,w,h);
+  return c.toDataURL('image/jpeg',0.75);
+}
+// Okunan metin parçalarından, sistemdeki kalıp kodlarına puan verir (okuma tekrar ettikçe puan birikir).
+// Tam / yakın eşleşme: yüksek puan. Yalnız rakam okunduysa (ör. 2363): içinde bu rakamlar geçen tüm kodlar; bir hane yanlış okunduysa da yakın olanlar.
+function adayPuanla(parcalar,liste,puan){
+  parcalar.forEach(t=>{
+    t=temizKod(t);
+    if(t.length<3||t==='YOK')return;
+    benzerKodlar(t,liste,5).forEach(b=>{if(b.d<=1.5)puan.set(b.k,(puan.get(b.k)||0)+(b.d===0?3:2))});
+    const rk=t.replace(/[^0-9]/g,'');
+    if(rk.length>=3){
+      let bulundu=false;
+      liste.forEach(kod=>{if(temizKod(kod).replace(/[^0-9]/g,'').includes(rk)){puan.set(kod,(puan.get(kod)||0)+1);bulundu=true}});
+      if(!bulundu&&rk.length>=4)liste.forEach(kod=>{
+        const blok=(temizKod(kod).match(/\d+/)||[''])[0];
+        if(blok.length===rk.length&&mesafe(blok,rk)<=1)puan.set(kod,(puan.get(kod)||0)+0.5);
+      });
+    }
+  });
+}
+// Joker destekli eşleşme: "1123" = içinde 1123 yan yana geçen tüm kodlar; "1123*-1" = 1123 geçen ve -1 ile biten; "DK1123*" = sonu serbest.
+function jokerRegex(q){
+  const parcalar=q.toUpperCase().replace(/[^A-Z0-9*-]/g,'').split('*');
+  const kac=x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const sonSerbest=parcalar.length>1&&parcalar[parcalar.length-1]==='';
+  const govde=parcalar.filter((x,i)=>x!==''||(i>0&&i<parcalar.length-1)).map(kac).join('.*');
+  if(!govde)return null;
+  return new RegExp(govde+(parcalar.length>1&&!sonSerbest?'$':''));
+}
+// Yazarak arama: eşleşenleri sıralı döndürür (başı eşleşen önce, sonra kısa kodlar).
+function kodAra(q,liste,sinir){
+  const t=(q||'').trim();if(t.replace(/[^A-Za-z0-9]/g,'').length<2)return [];
+  const re=jokerRegex(t);if(!re)return [];
+  const jokerli=t.indexOf('*')>=0,duz=temizKod(t);
+  const sonuc=[];
+  for(const k of liste){
+    const kk=temizKod(k);if(!re.test(kk))continue;
+    sonuc.push({k,p:(!jokerli&&kk===duz)?3:(!jokerli&&kk.indexOf(duz)===0)?2.5:(jokerli&&re.test(kk)&&kk.search(re)===0)?2.5:2});
+  }
+  sonuc.sort((x,y)=>y.p-x.p||x.k.length-y.k.length||(x.k<y.k?-1:1));
+  return sonuc.slice(0,sinir||60);
+}
+// Yapay zeka okuması: okunan metin kodların içinde yan yana geçiyorsa aday olur.
+// Harf/rakam karışıklığı (S/5, O/0, I/1, B/8, Z/2, G/6) için tek karakter değiştirilmiş biçimler de denenir (501833 -> S01833).
+function adayPuanlaSiki(t,liste,puan){
+  t=temizKod(t);if(t.length<3||t==='YOK')return;
+  const varyant=[];
+  if(/[A-Z]/.test(t)||/^[0-9]*[5-8021][0-9-]*$/.test(t)&&/^[5801]/.test(t)){
+    for(let i=0;i<Math.min(t.length,4);i++){const c=BENZER_HARF[t[i]];if(c&&!(/\d/.test(t[i])&&i>=2))varyant.push(t.slice(0,i)+c+t.slice(i+1))}
+  }
+  const dene=(metin,agirlik)=>{
+    liste.forEach(kod=>{
+      const kk=temizKod(kod),yer=kk.indexOf(metin);
+      if(yer<0)return;
+      const baslangic=yer===0||kk[yer-1]==='-'?0.5:0;
+      puan.set(kod,(puan.get(kod)||0)+agirlik+baslangic+(kk===metin?1:0));
+    });
+  };
+  dene(t,2);
+  varyant.forEach(v=>{if(v.length>=3)dene(v,1.2)});
+  if(![...puan.keys()].length&&t.length>=5){benzerKodlar(t,liste,5).forEach(b=>{if(b.d<=1)puan.set(b.k,(puan.get(b.k)||0)+(b.d===0?3:1.5))})}
+}
+// Yapay zeka okuması boşluklu / tiresiz olabilir ("1123 K 1", "1123K1"): parçalar arasına joker (*) konup aranır, birleştirilmez.
+function aiAdayPuanla(ham,liste,puan){
+  const norm=String(ham||'').toUpperCase().replace(/[^A-Z0-9\s*-]/g,' ').trim();
+  if(!norm||norm==='YOK')return;
+  let parca=norm.split(/[\s*]+/).filter(x=>x.replace(/-/g,''));
+  const toplam=new Map();
+  if(parca.length>1){
+    const pat=parca.join('*');
+    let r=kodAra(pat,liste,60);
+    if(!r.length)r=kodAra(pat+'*',liste,60);
+    r.forEach(x=>toplam.set(x.k,3));
+  }else{
+    adayPuanlaSiki(parca[0]||'',liste,toplam);
+    if(!toplam.size){
+      const gec=(parca[0]||'').replace(/([A-Z])(?=[0-9])|([0-9])(?=[A-Z])/g,'$1$2*');
+      if(gec.indexOf('*')>=0){let r=kodAra(gec,liste,60);if(!r.length)r=kodAra(gec+'*',liste,60);r.forEach(x=>toplam.set(x.k,2))}
+    }
+  }
+  toplam.forEach((v,k)=>puan.set(k,(puan.get(k)||0)+v));
+}
+const KOD_BICIM=/^[A-Z]{1,3}\d{3,5}(-\d{1,3}){1,3}$/;
+// DK ile başlayan kodlarda son -N parçası prosesi gösterir.
+const PROSES={1:'Dövme',2:'Makas',3:'Baskı',4:'Sıcak Kalibre',5:'Soğuk Kalibre',6:'Bükme',7:'Sıcak Kalibre delme',8:'Soğuk Delme',9:'Sıcak Delme',10:'Ezme',11:'Rekvals'};
+function prosesAdi(kod){
+  const m=/^DK.*-(\d{1,2})$/i.exec(String(kod||'').trim());
+  return m?(PROSES[Number(m[1])]||''):'';
+}
+function kodSatiri(k,p,sec){
+  const pr=prosesAdi(k),ad=(KOD.adlar||{})[k]||'';
+  return el('button',{type:'button',class:'b '+(p>=3?'yesil':'gri'),style:'display:block;width:100%;text-align:left;margin:0 0 4px;line-height:1.3;white-space:normal',onclick:()=>sec(k)},
+    el('div',{style:'font-weight:700'},k+(pr?'  ·  '+pr:'')),
+    ad?el('div',{style:'font-size:12px;font-weight:500;opacity:.9'},ad):null);
+}
+function adayCiz(kutu,puan,yeni,sec,temizle){
+  kutu.innerHTML='';
+  const sirali=[...puan.entries()].sort((a,b)=>b[1]-a[1]||a[0].length-b[0].length||(a[0]<b[0]?-1:1)).slice(0,60);
+  if(!sirali.length&&!yeni)return;
+  kutu.append(el('div',{class:'sinir'},sirali.length+' kalıp bulundu - hangisine bakacaksanız seçin:'));
+  const liste=el('div',{style:'max-height:38vh;overflow-y:auto;margin-top:4px;padding-right:2px'});
+  sirali.forEach(([k,p])=>liste.append(kodSatiri(k,p,sec)));
+  if(yeni)liste.append(el('button',{type:'button',class:'b gri',style:'display:block;width:100%;text-align:left;margin:0 0 4px',onclick:()=>sec(yeni)},yeni+' (listede yok)'));
+  kutu.append(liste,el('button',{class:'b kirmizi',type:'button',style:'margin:4px 0;padding:6px 10px',onclick:temizle},'Listeyi temizle'));
+}
+
+function kameraAc(hedef,bitince,ops){
+  const rafModu=!!(ops&&ops.raf);
+  const v=el('video',{playsinline:'',muted:'',style:'display:block;width:100%;height:100%;object-fit:cover'});
+  const kutu=el('div',{style:'position:absolute;left:8%;right:8%;top:20%;height:60%;border:3px solid #fde047;border-radius:8px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.35)'});
+  const kontrol=el('div',{class:'arac',style:'margin:8px 0 0'}),onizleme=el('div',{style:'margin-top:6px;max-width:440px;margin-left:auto;margin-right:auto'}),
+    durum=el('div',{class:'sinir'},'Kamera açılıyor...'),aiDurum=el('div',{style:'margin-top:8px;font-weight:600;color:#fde047;word-break:break-word'}),adaylar=el('div',{style:'margin-top:8px'}),manuel=el('input',{placeholder:rafModu?'Raf adını yazın':'Kodu yazın (ör. S01833, 1123, 1123*-1)',style:'margin-top:8px;text-transform:uppercase'}),manuelListe=el('div',{style:'margin-top:6px'});
+  const m=modal(rafModu?'Raf numarasını okutun':'Kalıp kodunu okutun',el('div',null,
+    el('div',{style:'position:relative;width:100%;max-width:440px;aspect-ratio:2/1;margin:0 auto;overflow:hidden;border-radius:10px;background:#000'},v,kutu),
+    el('div',{class:'sinir'},'Barkodu ya da dövme yazıyı sarı çerçevenin içine alın. Işığı yan taraftan verin; yazı çerçeveyi doldursun. Kamera görüntüsüne dokunarak da yapay zekayla okutabilirsiniz.'),
+    kontrol,onizleme,durum,aiDurum,adaylar,el('div',{class:'arac',style:'margin:6px 0 0'},manuel,el('button',{class:'b',onclick:()=>(rafModu?rafKarar:kabul)(manuel.value.trim())},'Tamam')),manuelListe));
+  let akis=null,dur=false;
+  // yapay zeka okuması aday listesini besler
+  const puan=new Map();let yeniAday='';
+  const temizleListe=()=>{puan.clear();yeniAday='';adaylar.innerHTML=''};
+  const kapat=()=>{dur=true;if(akis)akis.getTracks().forEach(t=>t.stop());m.kapat()};
+  m.ov.querySelector('button').addEventListener('click',kapat);
+  function kabul(kod){if(!kod)return;kapat();hedef.value=kod;bitince(kod)}
+  // Raf modu: okunan raf sistemde varsa seçilir/kaydedilir, yoksa "Raf oluştur" düğmesi çıkar.
+  function rafKarar(ham){
+    const ad=temizKod(ham||'');adaylar.innerHTML='';
+    if(!ad||ad==='YOK')return;
+    const raflar=ME.rafler||[];
+    const mevcut=raflar.find(r=>temizKod(r)===ad);
+    if(mevcut){
+      adaylar.append(el('div',{style:'color:#4ade80;font-weight:600'},'✔ '+mevcut+' rafı sistemde var.'),
+        el('button',{class:'b yesil',type:'button',style:'width:100%;margin-top:6px',onclick:()=>kabul(mevcut)},(ops.etiket||'Rafı seç')+' ('+mevcut+')'));
+    }else{
+      adaylar.append(el('div',{style:'color:#fbbf24;font-weight:600'},'"'+ad+'" rafı sistemde yok.'),
+        izin('kl_ekle')?el('button',{class:'b turuncu',type:'button',style:'width:100%;margin-top:6px',onclick:async()=>{
+          try{const j=await api('/api/raflar/ekle',{ad});await metaYenile();bildir(j.mesaj,'t');rafKarar(j.ad||ad)}catch(e){bildir(e.message,'h')}
+        }},'Raf oluştur ('+ad+')'):el('div',{class:'sinir'},'Raf oluşturma yetkiniz yok.'));
+    }
+    const benzer=raflar.filter(r=>r!==mevcut&&temizKod(r)!==ad&&(temizKod(r).includes(ad)||ad.includes(temizKod(r))&&temizKod(r).length>=3||mesafe(temizKod(r),ad)<=1)).slice(0,8);
+    if(benzer.length){
+      adaylar.append(el('div',{class:'sinir',style:'margin-top:8px'},'Benzer raflar:'));
+      benzer.forEach(r=>adaylar.append(el('button',{class:'b gri',type:'button',style:'margin:2px 6px 2px 0',onclick:()=>rafKarar(r)},r)));
+    }
+  }
+  manuel.addEventListener('input',async()=>{
+    const liste=rafModu?(ME.rafler||[]):await kodlariYukle(),bul=kodAra(manuel.value,liste,60);
+    manuelListe.innerHTML='';
+    if(!bul.length)return;
+    manuelListe.append(el('div',{class:'sinir'},bul.length+' kalıp - seçin ya da Tamam\'a basın (joker: *):'));
+    const kap=el('div',{style:'max-height:34vh;overflow-y:auto'});
+    bul.forEach(x=>kap.append(kodSatiri(x.k,x.p,kod=>rafModu?rafKarar(kod):kabul(kod))));
+    manuelListe.append(kap);
+  });
+  manuel.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();(rafModu?rafKarar:kabul)(manuel.value.trim())}});
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}}).then(async s=>{
+    akis=s;v.srcObject=s;await v.play().catch(()=>{});
+    if(ME.ai){
+      api('/api/okut/isin').catch(()=>{});  // bağlantıyı önceden ısıt
+      let aiMesgul=false,aiAdet=0;
+      async function aiOku(){
+        if(aiMesgul||dur)return;
+        aiMesgul=true;ai.disabled=true;
+        aiDurum.style.color='#fde047';aiDurum.textContent='⏳ Yapay zeka okuyor...';
+        try{
+          const kare=aiKare(v);
+          onizleme.innerHTML='';onizleme.append(el('div',{class:'sinir'},'Yapay zekaya gönderilen görüntü:'),el('img',{src:kare,style:'width:100%;max-width:300px;border-radius:8px;border:1px solid #2c3366'}));
+          const j=await api('/api/okut',{resim:kare});
+          if(dur)return;
+          const metin=temizKod(j.metin||'');
+          aiDurum.textContent='Yapay zekanın okuduğu: '+(j.metin||'-')+(j.ms?'   ('+(j.ms/1000).toFixed(1)+' sn)':'');
+          if(ops&&ops.arama){
+            // arama ekranlarında okunan metin doğrudan arama kutusuna yazılır ve arama arkadaki listede yapılır (boşluklu okuma: parçalar * ile ayrılır)
+            const pr=String(j.metin||'').toUpperCase().replace(/[^A-Z0-9\s*-]/g,' ').trim().split(/[\s*]+/).filter(x=>x.replace(/-/g,''));
+            if(pr.length&&metin!=='YOK')kabul(pr.join('*'));
+            else aiDurum.textContent+='  → okunamadı';
+          }else if(rafModu){rafKarar(metin)}else{
+          const liste=await kodlariYukle();
+          const once=puan.size;
+          aiAdayPuanla(j.metin||'',liste,puan);
+          if(KOD_BICIM.test(metin)&&![...puan.keys()].some(k=>temizKod(k)===metin))yeniAday=metin;
+          // okunamayan bir tur mevcut listeyi silmez
+          if(puan.size||yeniAday)adayCiz(adaylar,puan,yeniAday,kod=>kabul(kod),temizleListe);
+          else aiDurum.textContent+=(metin&&metin!=='YOK'?'  → bu okumayla eşleşen kalıp yok':'  → okunamadı');
+          }
+        }catch(e){aiDurum.style.color='#f87171';aiDurum.textContent='Hata: '+e.message}
+        aiMesgul=false;ai.disabled=false;
+      }
+      const ai=el('button',{class:'b turuncu',type:'button',onclick:aiOku},'🤖 Yapay zekayla oku');
+      kontrol.append(ai);
+      // kamera görüntüsüne dokunmak da yapay zekayla okutur
+      v.style.cursor='pointer';v.title='Dokunarak yapay zekayla oku';
+      v.addEventListener('click',aiOku);
+    }
+    try{
+      const iz=s.getVideoTracks()[0],cap=(iz.getCapabilities&&iz.getCapabilities())||{};
+      if(cap.torch){let acik=false;kontrol.append(el('button',{class:'b gri',type:'button',onclick:async()=>{acik=!acik;try{await iz.applyConstraints({advanced:[{torch:acik}]})}catch(e){}}},'💡 Fener'))}
+      if(cap.zoom){const z=el('input',{type:'range',min:cap.zoom.min,max:cap.zoom.max,step:cap.zoom.step||0.1,value:cap.zoom.min,style:'flex:1;min-width:140px'});
+        z.oninput=()=>{try{iz.applyConstraints({advanced:[{zoom:Number(z.value)}]})}catch(e){}};
+        kontrol.append(el('span',{class:'sinir'},'Yakınlaştır'),z)}
+      else{
+        const z=el('input',{type:'range',min:1,max:4,step:0.1,value:1,style:'flex:1;min-width:140px'});
+        z.oninput=()=>{const k=Number(z.value);v._zoom=k;v.style.transform='scale('+k+')';v.style.transformOrigin='50% 50%'};
+        kontrol.append(el('span',{class:'sinir'},'Yakınlaştır'),z);
+      }
+    }catch(e){}
+    durum.textContent='Okunuyor...';
+    if('BarcodeDetector' in window){
+      const d=new BarcodeDetector();
+      (function dene(){if(dur)return;d.detect(v).then(b=>{if(b.length){if(rafModu){rafKarar(b[0].rawValue);setTimeout(dene,1500)}else kabul(b[0].rawValue)}else setTimeout(dene,250)}).catch(()=>setTimeout(dene,500))})();
+    }
+    if(ME.ai){
+      durum.textContent='Yazıyı çerçeveye alıp kamerayı sabit tutun, sonra yapay zeka düğmesine basın ya da kamera görüntüsüne dokunun.';
+    }else if(!('BarcodeDetector' in window)){
+      durum.textContent='Bu telefonda otomatik okuma yok; kodu elle yazın.';
+    }
+  }).catch(e=>{durum.textContent='Kamera açılamadı: '+e.message});
+}
+function kamDugme(hedef,bitince,ops){
+  return el('button',{class:'b gri',type:'button',title:'Kamera ile oku',onclick:()=>{
+    if(kamVar){kameraAc(hedef,bitince,ops);return}
+    const adres=location.origin;
+    modal('Kamera bu adreste açılamıyor',el('div',null,
+      el('p',null,'Tarayıcılar kamerayı yalnızca güvenli adreslerde (https ya da localhost) açar. Şu an '+adres+' adresindesiniz.'),
+      el('p',null,'Çözüm 1: Sunucunun çalıştığı bilgisayarda http://localhost:'+(location.port||'80')+'/ adresini açın.'),
+      el('p',null,'Çözüm 2 (telefon): Chrome adres çubuğuna chrome://flags/#unsafe-treat-insecure-origin-as-secure yazın, kutuya '+adres+' yazıp Enabled yapın, Chrome\'u yeniden başlatın.'),
+      el('p',{class:'sinir'},'Kod kutusuna elle yazmaya ya da barkod okuyucuyla okutmaya devam edebilirsiniz.')));
+  }},'📷');
+}
+
+// ---- oturum
+function girisGoster(){try{if(!$('#gCihazAd').value)$('#gCihazAd').value=localStorage.getItem('kt_cihazad')||''}catch(e){}
+  $('#giris').style.display='';$('#uygulama').style.display='none'}
+// Bu tarayıcının cihaz kodu: ilk kullanımda rastgele üretilir ve üç yerde birden saklanır (localStorage, çerez, IndexedDB);
+// biri silinirse diğerlerinden geri yazılır. Sunucuda yalnızca kodun özeti tutulur.
+function idbAc(){return new Promise((res,rej)=>{try{const r=indexedDB.open('kt_cihaz_db',1);r.onupgradeneeded=()=>r.result.createObjectStore('k');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function idbOku(){try{const d=await idbAc();return await new Promise(res=>{const q=d.transaction('k').objectStore('k').get('kod');q.onsuccess=()=>res(q.result||'');q.onerror=()=>res('')})}catch(e){return ''}}
+async function idbYaz(v){try{const d=await idbAc();await new Promise(res=>{const t=d.transaction('k','readwrite');t.objectStore('k').put(v,'kod');t.oncomplete=()=>res();t.onerror=()=>res()})}catch(e){}}
+function cerezOku(){try{const m=document.cookie.match(/(?:^|;\s*)kt_cihaz=([^;]+)/);return m?decodeURIComponent(m[1]):''}catch(e){return ''}}
+function cerezYaz(v){try{document.cookie='kt_cihaz='+encodeURIComponent(v)+'; max-age=34560000; path=/; SameSite=Lax'+(location.protocol==='https:'?'; Secure':'')}catch(e){}}
+async function cihazKodu(){
+  const gecerli=x=>typeof x==='string'&&x.length>=16;
+  let ls='';try{ls=localStorage.getItem('kt_cihaz')||''}catch(e){}
+  const ck=cerezOku(),ix=await idbOku();
+  const depo={localStorage:gecerli(ls),cerez:gecerli(ck),indexedDB:gecerli(ix)};
+  let kod=[ls,ck,ix].find(gecerli)||'';
+  if(!kod){
+    const a=new Uint8Array(16);crypto.getRandomValues(a);
+    kod=Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('')+'-'+Date.now().toString(36);
+  }
+  try{localStorage.setItem('kt_cihaz',kod)}catch(e){}
+  cerezYaz(kod);await idbYaz(kod);
+  return {kod,depo};
+}
+function tarayiciAdi(){
+  const u=navigator.userAgent;let m;
+  if(m=/Edg(?:e|A|iOS)?\/([\d.]+)/.exec(u))return 'Edge '+m[1].split('.')[0];
+  if(m=/OPR\/([\d.]+)/.exec(u))return 'Opera '+m[1].split('.')[0];
+  if(m=/SamsungBrowser\/([\d.]+)/.exec(u))return 'Samsung Internet '+m[1].split('.')[0];
+  if(m=/(?:Chrome|CriOS)\/([\d.]+)/.exec(u))return 'Chrome '+m[1].split('.')[0];
+  if(m=/(?:Firefox|FxiOS)\/([\d.]+)/.exec(u))return 'Firefox '+m[1].split('.')[0];
+  if(m=/Version\/([\d.]+).*Safari/.exec(u))return 'Safari '+m[1].split('.')[0];
+  return 'Bilinmiyor';
+}
+function isletimAdi(){
+  const u=navigator.userAgent;let m;
+  if(m=/Android ([\d.]+)/.exec(u))return 'Android '+m[1];
+  if(m=/(?:iPhone|iPad|CPU) OS ([\d_]+)/.exec(u))return 'iOS '+m[1].replace(/_/g,'.');
+  if(/Windows NT 10/.test(u))return 'Windows 10/11';
+  if(m=/Windows NT ([\d.]+)/.exec(u))return 'Windows NT '+m[1];
+  if(/Mac OS X/.test(u))return 'macOS';
+  if(/CrOS/.test(u))return 'ChromeOS';
+  if(/Linux/.test(u))return 'Linux';
+  return 'Bilinmiyor';
+}
+function cihazTuru(){
+  const u=navigator.userAgent;
+  if(/iPad|Tablet/.test(u)||(/Android/.test(u)&&!/Mobile/.test(u)))return 'Tablet';
+  if(/Mobi|iPhone|Android/.test(u))return 'Telefon';
+  return 'Bilgisayar';
+}
+function cihazBilgisi(depo){
+  try{return JSON.stringify({tarayici:tarayiciAdi(),isletim:isletimAdi(),tur:cihazTuru(),ekran:screen.width+'x'+screen.height,dil:navigator.language,saat:Intl.DateTimeFormat().resolvedOptions().timeZone,
+    cekirdek:navigator.hardwareConcurrency||0,bellek:navigator.deviceMemory||0,dokunmatik:navigator.maxTouchPoints||0,depo:depo||{},ua:navigator.userAgent.slice(0,150)}).slice(0,590)}catch(e){return ''}
+}
+function oturumKapat(){T=null;ME=null;_sonIslem='';try{sessionStorage.removeItem('kt_islem')}catch(e){}localStorage.removeItem('kt_token');girisGoster()}
+$('#gBtn').onclick=async()=>{
+  $('#gBtn').disabled=true;$('#gHata').innerHTML='';
+  try{
+    let cad=$('#gCihazAd').value.trim();try{if(cad)localStorage.setItem('kt_cihazad',cad)}catch(e){}
+    const ck=await cihazKodu();
+    const j=await api('/api/giris',{ad:$('#gAd').value,parola:$('#gParola').value,cihaz:ck.kod,cihazAd:cad,bilgi:cihazBilgisi(ck.depo)});T=j.token;localStorage.setItem('kt_token',T);$('#gParola').value='';await basla()}
+  catch(e){$('#gHata').append(el('div',{class:'hata'},e.message));if(/Cihaz adı/.test(e.message))$('#gCihazAd').focus()}
+  $('#gBtn').disabled=false;
+};
+$('#gParola').onkeydown=e=>{if(e.key==='Enter')$('#gBtn').click()};
+$('#cikis').onclick=oturumKapat;
+$('#portalBtn').onclick=()=>{location.hash='#/portal'};
+$('#baslik').onclick=()=>{location.hash='#/portal'};
+
+async function metaYenile(){ME=await api('/api/meta')}
+async function basla(){
+  await metaYenile();
+  $('#giris').style.display='none';$('#uygulama').style.display='';
+  $('#kisi').textContent=ME.ad+(ME.bolum?' • '+ME.bolum:'')+'  •  sürüm '+SURUM;
+  yonlendir();
+}
+const SAYFALAR={};
+function yonlendir(){
+  if(!ME)return;
+  const ad=(location.hash||(izin('kl_gor')?'#/ara':'#/portal')).replace('#/','').split('?')[0];
+  const s=SAYFALAR[ad]||SAYFALAR.portal;
+  document.querySelectorAll('.modal,.oneri').forEach(x=>x.remove());
+  const k=$('#icerik');k.innerHTML='';
+  Promise.resolve(s(k)).catch(e=>{k.append(el('div',{class:'hata'},e.message))});
+}
+window.addEventListener('hashchange',yonlendir);
+
+// =========================================================== PORTAL
+SAYFALAR.portal=function(k){
+  const kartlar=[
+    ['Kalıp / Raf Ara','Kalıp koduyla ya da raf adıyla hızlı arama; rafı değiştir','ara','linear-gradient(135deg,#22c55e,#3b82f6)',izin('kl_gor')],
+    ['Kalıp Takip','Kalıp kayıt, bakım ve süre takibi; istatistik ve Excel çıktısı','kt','linear-gradient(135deg,#3b82f6,#7c3aed)',izin('kalip_gor')],
+    ['Kalıp Listesi','Tüm kalıplar tek satırda; geçmiş, tashih, raf ve talepler; Excel yükleme','kl','linear-gradient(135deg,#14b8a6,#3b82f6)',izin('kl_gor')],
+    ['Talep','Kalıp için talep aç, takip et; kalıp statü ve lokasyonları','talep','linear-gradient(135deg,#f59e0b,#ec4899)',izin('talep_gor')],
+    ['Kalıp - Bölüm Ataması','Kalıbın sahibi bölümü ata; bölümler yalnızca kendi kalıplarını görür','atama','linear-gradient(135deg,#f97316,#ef4444)',izin('kl_ekle')],
+    ['Raflar','Raf adlarını tanımla','raflar','linear-gradient(135deg,#06b6d4,#10b981)',izin('kl_gor')],
+    ['Hızlı İşlem','Rafa yerleştir, teslim al (barkodla)','hizli','linear-gradient(135deg,#7c3aed,#3b82f6)',izin('kl_ekle')||izin('talep_kalip_durum')],
+    ['Kullanıcılar','Kullanıcı, bölüm ve yetki yönetimi','kul','linear-gradient(135deg,#10b981,#0d9488)',ME.admin],
+    ['Bölümler ve Lokasyonlar','Bölüm, ana ve alt lokasyonlar','lok','linear-gradient(135deg,#3b82f6,#06b6d4)',ME.admin],
+    ['Bildirim Ayarları','Telegram ve e-posta bildirimleri; gönderim kaydı','bildirim','linear-gradient(135deg,#ec4899,#8b5cf6)',ME.admin],
+    ['Cihaz Erişimleri','Hangi telefon / bilgisayar giriş yapabilir: onay, ret, kontrol','cihaz','linear-gradient(135deg,#ef4444,#7c3aed)',ME.admin]
+  ].filter(x=>x[4]);
+  const rozetKutu=el('div',{style:'max-width:900px'});
+  $('#baslik').textContent='Kalıp Takip';
+  if(izin('talep_gor')||ME.admin)api('/api/rozet').then(r=>{
+    const satir=(simge,metin,renk,hedef)=>el('div',{class:'kart',style:'cursor:pointer;margin-bottom:8px;padding:12px 14px;border-left:4px solid '+renk,onclick:()=>{location.hash=hedef||'#/talep'}},simge+' '+metin);
+    if(r.cihazBekleyen)rozetKutu.append(satir('🔐',r.cihazBekleyen+' cihaz erişim onayı bekliyor','#ef4444','#/cihaz'));
+    if(r.gelen)rozetKutu.append(satir('📥','Size gelen '+r.gelen+' talep teslim alınmayı bekliyor','#22c55e'));
+    if(r.geriDonen)rozetKutu.append(satir('⚠','Geri dönen '+r.geriDonen+' talep karar bekliyor (kapat ya da tekrar gönder)','#f59e0b'));
+    if(r.rafBekleyen)rozetKutu.append(satir('📍','Rafa kaldırılması gereken '+r.rafBekleyen+' kalıp var','#3b82f6'));
+  }).catch(()=>{});
+  k.append(el('h2',null,'Portal'),rozetKutu,el('div',{class:'portal'},kartlar.map(x=>
+    el('button',{class:'pk',style:'background:'+x[3],onclick:()=>{location.hash='#/'+x[2]}},el('b',null,x[0]),el('span',null,x[1])))));
+};
+
+// =========================================================== KALIP TAKİP
+const SURE_ALANLARI=[['IslemSuresi','İşlem süresi'],['Ayar','Ayar'],['Bakim','Bakım'],['ElemanEksikligi','Eleman eksikliği'],['Elektrik','Elektrik'],['KalipAriza','Kalıp arıza'],['Takim','Takım'],['Ariza','Arıza']];
+
+let _ktBolum='';
+function bolumSecenekleri(){return ME.tumBolum||ME.admin?ME.bolumler:(ME.kBolumler||[])}
+SAYFALAR.kt=function(k){
+  const st={satirlar:[]};
+  const alan=sel(ME.aramaAlanlari.map(a=>({v:a.alan,t:a.ad})),'',{});
+  const q=el('input',{placeholder:'Ara...'});
+  const lim=sel([{v:100,t:'Son 100'},{v:200,t:'Son 200'},{v:500,t:'Son 500'},{v:1000,t:'Son 1000'},{v:0,t:'Hepsi'}],200,{});
+  const sonuc=el('div'),bilgi=el('div',{class:'sinir'});
+  const bol=sel(bolumSecenekleri(),_ktBolum,{title:'Kalıp sahibi bölüme göre süz'},'Tüm bölümler');
+  bol.onchange=()=>{_ktBolum=bol.value;yenile()};
+  async function yenile(){
+    try{
+      const j=await api('/api/kt/ara?'+qs({alan:alan.value,q:q.value,limit:lim.value,bolum:bol.value}));
+      st.satirlar=j.satirlar;
+      sonuc.innerHTML='';
+      sonuc.append(tablo(ME.ktKolonlar,j.satirlar,{sec:(s,tr)=>{secIsaretle(tr);ktForm(s,yenile)}}));
+      bilgi.textContent=j.satirlar.length+' kayıt';
+    }catch(e){sonuc.innerHTML='';sonuc.append(el('div',{class:'hata'},e.message))}
+  }
+  let zaman;q.oninput=()=>{clearTimeout(zaman);zaman=setTimeout(yenile,350)};
+  alan.onchange=lim.onchange=yenile;
+  q.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(zaman);yenile()}};
+  k.append(el('h2',null,'Kalıp Takip'),
+    el('div',{class:'arac'},alan,q,kamDugme(q,yenile),lim,bol,
+      izin('ekle')&&el('button',{class:'b yesil',onclick:()=>ktForm(null,yenile)},'+ Yeni kayıt'),
+      izin('istatistik')&&el('button',{class:'b turuncu',onclick:()=>ktIstatistik(bol.value)},'İstatistik'),
+      izin('excel')&&el('button',{class:'b gri',onclick:()=>indir('/api/kt/excel?'+qs({alan:alan.value,q:q.value,bolum:bol.value}),'kalip_takip.csv')},'Excel\'e aktar')),
+    bilgi,sonuc);
+  yenile();
+};
+
+let _sonIslem='';   // girilen işlem tarihi oturum boyunca hatırlanır
+function ktForm(s,yenile){
+  const yeni=!s;
+  const v=s||{};
+  const f={};
+  function giris(ad,etiket,tur,extra){
+    const i=el('input',Object.assign({type:tur||'text'},extra||{}));
+    if(tur==='date')i.value=iso10(v[ad]);else i.value=(tur==='sayi')?sayiMetin(v[ad]):(v[ad]==null?'':v[ad]);
+    if(tur==='sayi'){
+      i.type='text';i.inputMode='decimal';
+      const hes=()=>{const r=hesapla(i.value);if(r!==null)i.value=yaz2(r)};
+      i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();hes();const n=i.value.length;i.setSelectionRange(n,n);hesap()}});
+      i.addEventListener('blur',()=>{hes();hesap()});
+    }
+    f[ad]=i;
+    return el('div',null,el('label',null,etiket),i);
+  }
+  const lt=combo(el('input',{value:v.KalipTuru||''}),ME.kalipTurleri);f.KalipTuru=lt;
+  const tr=combo(el('input',{value:v.Tur||''}),ME.turler);f.Tur=tr;
+  const toplam=el('input',{readOnly:true}),hafta=el('input',{readOnly:true,value:v.Hafta||''});
+  const ac=el('textarea',{rows:2});ac.value=v.Aciklama||'';f.Aciklama=ac;
+  const islem=el('input',{type:'date'});
+  try{islem.value=sessionStorage.getItem('kt_islem')||_sonIslem||''}catch(e){islem.value=_sonIslem||''}
+  islem.addEventListener('change',()=>{_sonIslem=islem.value;try{sessionStorage.setItem('kt_islem',islem.value)}catch(e){}});
+  function haftaHesap(iso){
+    if(!iso)return '';
+    const d=new Date(iso+'T00:00:00'),y=d.getFullYear(),ilk=new Date(y,0,1);
+    const gun=Math.round((d-ilk)/86400000),ofs=(ilk.getDay()+6)%7;
+    return (Math.floor((gun+ofs)/7)+1-1)+'/'+y;
+  }
+  function bitisAlani(){
+    const d=giris('BitisTarihi','Bitiş tarihi','date');
+    const inp=f.BitisTarihi;
+    const guncelle=()=>{hafta.value=haftaHesap(inp.value)};
+    inp.addEventListener('input',guncelle);inp.addEventListener('change',guncelle);
+    return d;
+  }
+  const sureler=SURE_ALANLARI.map(a=>giris(a[0],a[1],'sayi'));
+  function hesap(){
+    let t=null;SURE_ALANLARI.forEach(a=>{const x=hesapla(f[a[0]].value);if(x!==null)t=(t||0)+x});
+    toplam.value=t==null?'':yaz2(t);
+  }
+  SURE_ALANLARI.forEach(a=>f[a[0]].addEventListener('input',hesap));
+  const govde=el('div',null,
+    veriListe('dlTur',ME.kalipTurleri),veriListe('dlTas',ME.turler),
+    !yeni&&el('div',{class:'sinir'},'Kayıt #'+v.Id+(v.SonKullanici?' • son değiştiren: '+v.SonKullanici:'')+(v.SonDegisiklik?' • '+fmtTarih(v.SonDegisiklik):'')),
+    el('div',{class:'alan'},giris('ParcaKodu','Parça kodu *'),el('div',null,el('label',null,'Kalıp türü'),lt),giris('TepeKodu','Teklif referans'),giris('ParcaAdi','Parçanın adı')),
+    el('div',{class:'alan'},giris('GelisTarihi','Geliş tarihi','date'),bitisAlani(),el('div',null,el('label',null,'Tasarım modeli (Yeni / İlave / Tashih)'),tr),giris('TashihSayi','Tashih sayısı','sayi')),
+    el('div',{class:'alan'},giris('CncNo','CNC no','sayi'),giris('DovmeAdeti','Dövme adeti','sayi'),el('div',null,el('label',null,'Hafta (otomatik)'),hafta)),
+    el('h3',null,'Süreler (dakika)'),
+    el('div',{class:'alan'},sureler,el('div',null,el('label',null,'Toplam zaman'),toplam)),
+    el('label',null,'Açıklama'),ac,
+    el('div',{class:'alan',style:'margin-top:8px'},el('div',null,el('label',null,'İşlem tarihi (tashih kaydının geliş tarihi olur)'),islem))
+  );
+  hesap();
+  const hata=el('div');
+  function topla(){
+    const d={};
+    Object.keys(f).forEach(a=>d[a]=f[a].value);
+    ['TashihSayi','CncNo','DovmeAdeti'].concat(SURE_ALANLARI.map(x=>x[0])).forEach(a=>{const r=hesapla(d[a]);if(r!==null)d[a]=yaz2(r)});
+    return d;
+  }
+  async function gonder(yol,ek,mesaj){
+    hata.innerHTML='';
+    const d=topla();Object.assign(d,ek||{});
+    try{const j=await api(yol,d);bildir(j.mesaj,'t');m.kapat();yenile();aramayaOdak()}catch(e){hata.append(el('div',{class:'hata'},e.message))}
+  }
+  const dugmeler=el('div',{class:'arac',style:'margin-top:12px'});
+  if(yeni){
+    if(izin('ekle'))dugmeler.append(el('button',{class:'b yesil',onclick:()=>gonder('/api/kt/kaydet')},'Kaydet'));
+  }else{
+    const kim={Id:v.Id,Surum:v.Surum};
+    if(izin('guncelle'))dugmeler.append(el('button',{class:'b',onclick:()=>gonder('/api/kt/kaydet',kim)},'Güncelle'));
+    if(izin('ekle'))dugmeler.append(el('button',{class:'b yesil',onclick:()=>gonder('/api/kt/kaydet')},'Yeni kayıt olarak kaydet'));
+    if(izin('tashih')){
+      dugmeler.append(el('button',{class:'b turuncu',onclick:()=>{
+        if(!islem.value){hata.innerHTML='';hata.append(el('div',{class:'hata'},'Önce "İşlem tarihi" girin; tashih kaydının geliş tarihi olarak kullanılır.'));return}
+        gonder('/api/kt/tashih',Object.assign({IslemTarihi:islem.value},kim));
+      }},'Güncelle + Tashih kaydı'));
+      dugmeler.append(el('button',{class:'b gri',onclick:()=>{
+        const t=hesapla(f.TashihSayi.value)||0;
+        f.GelisTarihi.value=islem.value||'';f.BitisTarihi.value='';f.TashihSayi.value=String(t+1);
+        f.DovmeAdeti.value='';f.CncNo.value='';ac.value='';SURE_ALANLARI.forEach(a=>f[a[0]].value='');hesap();hafta.value='';
+        bildir('Form temizlendi, tashih sayısı arttırıldı. Henüz kaydedilmedi: "Yeni kayıt olarak kaydet" ya da "Güncelle".','b');
+      }},'Temizle (tashih)'));
+    }
+    if(izin('sil'))dugmeler.append(el('button',{class:'b kirmizi',onclick:async()=>{
+      if(!confirm('#'+v.Id+' numaralı kayıt silinsin mi?'))return;
+      try{const j=await api('/api/kt/sil',{id:v.Id});bildir(j.mesaj,'t');m.kapat();yenile();aramayaOdak()}catch(e){hata.append(el('div',{class:'hata'},e.message))}
+    }},'Sil'));
+  }
+  govde.append(hata,dugmeler);
+  const m=modal(yeni?'Yeni kayıt':(v.ParcaKodu||'Kayıt'),govde,true);
+  m.ov.firstChild.style.maxWidth='1500px';
+}
+
+async function ktIstatistik(bolum0){
+  const bas=el('input',{type:'date'}),bit=el('input',{type:'date'}),sonuc=el('div');
+  const bol=sel(bolumSecenekleri(),bolum0||'',{},'Tüm bölümler');bol.onchange=()=>getir();
+  async function getir(){
+    try{
+      const j=await api('/api/kt/istatistik?'+qs({bas:bas.value,bit:bit.value,bolum:bol.value}));
+      const turler=[...new Set(j.satirlar.map(x=>x.Tur||'(boş)'))].sort();
+      const tipler=[...new Set(j.satirlar.map(x=>x.KalipTuru||'(boş)'))].sort();
+      const sayi={};j.satirlar.forEach(x=>{sayi[(x.KalipTuru||'(boş)')+'|'+(x.Tur||'(boş)')]=x.Adet});
+      const satirlar=tipler.map(t=>{const o={'Kalıp türü':t};let top=0;turler.forEach(u=>{const n=sayi[t+'|'+u]||0;o[u]=n;top+=n});o.Toplam=top;return o});
+      const kol=[{alan:'Kalıp türü',baslik:'Kalıp türü'}].concat(turler.map(u=>({alan:u,baslik:u})),[{alan:'Toplam',baslik:'Toplam'}]);
+      const gen={'Kalıp türü':'TOPLAM'};let g=0;turler.forEach(u=>{const n=satirlar.reduce((a,r)=>a+r[u],0);gen[u]=n;g+=n});gen.Toplam=g;satirlar.push(gen);
+      sonuc.innerHTML='';sonuc.append(tablo(kol,satirlar));
+    }catch(e){sonuc.innerHTML='';sonuc.append(el('div',{class:'hata'},e.message))}
+  }
+  modal('İstatistik (bitiş tarihine göre)',el('div',null,
+    el('div',{class:'arac'},el('span',null,'Başlangıç'),bas,el('span',null,'Bitiş'),bit,el('span',null,'Bölüm'),bol,el('button',{class:'b',onclick:getir},'Getir')),sonuc),true);
+  getir();
+}
+
+// =========================================================== KALIP LİSTESİ
+SAYFALAR.kl=function(k){
+  const mod=sel([{v:0,t:'Kalıp ile ara'},{v:1,t:'Raf ile ara'}],0,{style:'flex:0 0 170px'});
+  const q=el('input',{placeholder:'Kalıp kodu veya adı'});
+  const sonuc=el('div'),bilgi=el('div',{class:'sinir'});
+  async function yenile(){
+    try{
+      const j=await api('/api/kalip?'+qs({mod:mod.value,q:q.value}));
+      sonuc.innerHTML='';
+      sonuc.append(tablo(ME.klKolonlar,j.satirlar,{sec:(s,tr)=>{secIsaretle(tr);klDetay(s,yenile)}}));
+      bilgi.textContent=j.satirlar.length+' kalıp'+(j.sinirli?' (ilk 100; aramayı daraltın)':'');
+    }catch(e){sonuc.innerHTML='';sonuc.append(el('div',{class:'hata'},e.message))}
+  }
+  let zaman;q.oninput=()=>{clearTimeout(zaman);zaman=setTimeout(yenile,350)};
+  mod.onchange=()=>{q.placeholder=mod.value==='1'?'Raf adı (o rafta bulunan tüm kalıplar)':'Kalıp kodu veya adı';yenile()};
+  q.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(zaman);yenile()}};
+  const dosya=el('input',{type:'file',accept:'.xlsx,.csv,.txt',style:'display:none',onchange:async()=>{
+    const f=dosya.files[0];if(!f)return;
+    const buf=await f.arrayBuffer();let bin='';const b=new Uint8Array(buf);
+    for(let i=0;i<b.length;i+=8192)bin+=String.fromCharCode.apply(null,b.subarray(i,i+8192));
+    try{const j=await api('/api/kl/yukle',{ad:f.name,veri:btoa(bin)});await metaYenile();bildir(j.mesaj,'t');yenile()}catch(e){bildir(e.message,'h')}
+    dosya.value='';
+  }});
+  k.append(el('h2',null,'Kalıp Listesi'),
+    el('div',{class:'arac'},mod,q,kamDugme(q,yenile),
+      izin('kl_ekle')&&el('button',{class:'b yesil',onclick:()=>klTanim(null,yenile)},'+ Yeni kalıp'),
+      izin('kl_ekle')&&el('button',{class:'b',onclick:()=>dosya.click()},'Excel / CSV yükle'),
+      izin('kl_excel')&&el('button',{class:'b gri',onclick:()=>indir('/api/kl/excel?'+qs({mod:mod.value,q:q.value}),'kalip_listesi.csv')},'Excel\'e aktar'),dosya),
+    el('div',{class:'sinir'},'Yükleme dosyasında başlıklar: Kalıp Kodu (zorunlu), Kalıp Adı, Kalıp Türü, Tepe Kodu, Lokasyon, Raf, Sahip Bölüm, Notlar.'),
+    bilgi,sonuc);
+  yenile();
+};
+
+function tamirEtiket(s){
+  const kayit=s.TashihSayisi||0,portal=s.TamirAdedi||0;
+  return [
+    el('span',{class:'et',title:'Kalıp Takip kayıtlarındaki tashih/tamir ('+kayit+') + portaldan gelen tamir ('+portal+')'},'Tamir: '+(kayit+portal)),
+    s.Durum==='Hurda'?el('span',{class:'et',style:'background:#4c1d1d;color:#fecaca'},'Hurda'):el('span',{class:'et',style:'background:#134e4a;color:#5eead4'},'Aktif')];
+}
+async function klDetay(s,yenile){
+  const ic=el('div'),icerik=el('div');
+  const sek={};
+  const baslik=el('div',null,
+    ['Lokasyon','Raf','SahipBolum'].map(a=>el('span',{class:'et'},({Lokasyon:'Lokasyon',Raf:'Raf',SahipBolum:'Sahip'}[a])+': '+(s[a]||'-'))),
+    tamirEtiket(s),el('span',{class:'et'},'Talep: '+(s.TalepSayisi||0)),
+    s.SonKalipStatu&&el('span',{class:'et'},'Son statü: '+s.SonKalipStatu));
+  const sekBar=el('div',{class:'sekmeler'});
+  const rafSec=sel(ME.rafler,s.Raf||'',{style:'flex:0 1 200px'},'(rafsız)');
+  const rafKaydet=async raf=>{try{const j=await api('/api/raf',{kod:s.KalipKodu,raf});bildir(j.mesaj,'t');s.Raf=raf;yenile()}catch(e){bildir(e.message,'h')}};
+  ic.append(el('div',{style:'color:#9aa3d6'},s.KalipAdi||''),baslik,
+    izin('kl_ekle')&&el('div',{class:'arac',style:'margin:8px 0'},
+      el('button',{class:'b',onclick:()=>{m.kapat();klTanim(s,yenile)}},'Düzenle'),
+      el('span',{class:'sinir'},'Raf:'),rafSec,el('button',{class:'b yesil',onclick:()=>rafKaydet(rafSec.value)},'Rafı kaydet'),
+      kamDugme({},raf=>{if(![...rafSec.options].some(o=>o.value===raf))rafSec.append(el('option',{value:raf},raf));rafSec.value=raf;rafKaydet(raf)},{raf:true,etiket:'Rafı kalıba kaydet'})),sekBar,icerik);
+  const m=modal(s.KalipKodu,ic,true);
+  let g;
+  try{g=await api('/api/gecmis?k='+encodeURIComponent(s.Anahtar))}catch(e){icerik.append(el('div',{class:'hata'},e.message));return}
+  const sekmeler=[
+    ['Talep geçmişi',()=>tablo([{alan:'TalepNo',baslik:'Talep no'},{alan:'TalepSira',baslik:'Sıra'},{alan:'TalepTarihi',baslik:'Talep tarihi'},{alan:'Bolum',baslik:'Bölüm'},{alan:'TalepStatu',baslik:'Talep statü'},{alan:'KalipStatu',baslik:'Kalıp statü'},{alan:'Lokasyon',baslik:'Lokasyon'},{alan:'TashihSayisi',baslik:'Tashih'},{alan:'Oncelik',baslik:'Öncelik'},{alan:'TalepEden',baslik:'Talep eden'},{alan:'TerminTarihi',baslik:'Termin'},{alan:'Aciklama',baslik:'Açıklama'}],g.talepler)],
+    ['Statü / lokasyon hareketleri',()=>tablo([{alan:'Tarih',baslik:'Tarih'},{alan:'TalepNo',baslik:'Talep no'},{alan:'EskiStatu',baslik:'Eski statü'},{alan:'YeniStatu',baslik:'Yeni statü'},{alan:'EskiLokasyon',baslik:'Eski lokasyon'},{alan:'YeniLokasyon',baslik:'Yeni lokasyon'},{alan:'Kullanici',baslik:'Kullanıcı'}],g.hareketler)],
+    ['Kalıp takip kayıtları',()=>{const kl=Object.keys((g.takip[0]||{}));return tablo(kl.map(a=>({alan:a,baslik:a})),g.takip)}]
+  ];
+  function goster(i){
+    [...sekBar.children].forEach((b,j)=>b.classList.toggle('on',i===j));
+    icerik.innerHTML='';icerik.append(sekmeler[i][1]());
+  }
+  sekmeler.forEach((x,i)=>sekBar.append(el('button',{onclick:()=>goster(i)},x[0]+' ('+[g.talepler,g.hareketler,g.takip][i].length+')')));
+  goster(0);
+}
+
+function klTanim(s,yenile){
+  const duzenle=!!s;s=s||{};
+  const kod=el('input',{value:s.KalipKodu||'',readOnly:duzenle}),ad=el('input',{value:s.KalipAdi||''}),tur=combo(el('input',{value:s.KalipTuru||''}),ME.kalipTurleri),
+    tepe=el('input',{value:s.TepeKodu||''}),lok=sel(ME.lokasyonlar,s.Lokasyon||'',{},''),sahip=sel(ME.bolumler,s.SahipBolum||'',{},''),
+    raf=sel(ME.rafler,s.Raf||'',{},''),nt=el('textarea',{rows:3});nt.value=s.Notlar||'';
+  const hata=el('div');
+  const m=modal(duzenle?s.KalipKodu+' - düzenle':'Yeni kalıp',el('div',null,veriListe('dlKT',ME.kalipTurleri),
+    el('div',{class:'alan'},el('div',null,el('label',null,'Kalıp kodu *'),kod),el('div',null,el('label',null,'Kalıp / parça adı'),ad)),
+    el('div',{class:'alan'},el('div',null,el('label',null,'Kalıp türü'),tur),el('div',null,el('label',null,'Tepe kodu'),tepe)),
+    el('div',{class:'alan'},el('div',null,el('label',null,'Lokasyon (alt lokasyon olabilir)'),lok),el('div',null,el('label',null,'Sahip bölüm'),sahip),el('div',null,el('label',null,'Raf'),raf)),
+    el('label',null,'Notlar'),nt,hata,
+    el('div',{class:'arac',style:'margin-top:12px'},el('button',{class:'b yesil',onclick:async()=>{
+      hata.innerHTML='';
+      try{const j=await api('/api/kl/kaydet',{kod:kod.value,ad:ad.value,tur:tur.value,tepe:tepe.value,notlar:nt.value,lokasyon:lok.value,sahip:sahip.value,raf:raf.value,duzenle});bildir(j.mesaj,'t');m.kapat();yenile();aramayaOdak()}
+      catch(e){hata.append(el('div',{class:'hata'},e.message))}
+    }},'Kaydet'),el('button',{class:'b gri',onclick:()=>m.kapat()},'Vazgeç'))));
+}
+
+
+// =========================================================== KALIP / RAF ARA (hızlı arama)
+SAYFALAR.ara=function(k){
+  let mod=0;
+  const bK=el('button',{class:'on',onclick:()=>modSec(0)},'Kalıp ile ara'),bR=el('button',{onclick:()=>modSec(1)},'Raf ile ara');
+  const q=el('input',{placeholder:'Kalıp kodu veya adı',autocomplete:'off',enterkeyhint:'search',style:'font-size:18px;padding:14px'});
+  const sonuc=el('div');
+  function modSec(m){
+    mod=m;bK.classList.toggle('on',m===0);bR.classList.toggle('on',m===1);
+    q.placeholder=m===1?'Raf adı (o rafta bulunan tüm kalıplar)':'Kalıp kodu veya adı';q.focus();ara();
+  }
+  async function ara(){
+    try{
+      const j=await api('/api/kalip?'+qs({mod,q:q.value}));
+      sonuc.innerHTML='';
+      sonuc.append(el('div',{class:'sinir'},j.satirlar.length?j.satirlar.length+' kalıp'+(j.sinirli?' (ilk 100; aramayı daraltın)':''):'Sonuç yok.'));
+      j.satirlar.forEach(s=>sonuc.append(el('div',{class:'kart',style:'cursor:pointer;padding:12px 14px;margin-bottom:8px',onclick:()=>klDetay(s,ara)},
+        el('b',{style:'font-size:17px;color:#a5b4fc'},s.KalipKodu),el('div',{style:'color:#9aa3d6;font-size:14px'},s.KalipAdi||''),
+        el('div',{style:'margin-top:6px'},
+          s.Raf?el('span',{class:'et',style:'background:#134e4a;color:#5eead4'},'Raf: '+s.Raf):el('span',{class:'et',style:'background:#713f12;color:#fde047'},'Rafı yok'),
+          s.Lokasyon&&el('span',{class:'et',style:'background:#312e81;color:#c7d2fe'},s.Lokasyon),
+          s.SahipBolum&&el('span',{class:'et'},'Sahip: '+s.SahipBolum),
+          tamirEtiket(s),el('span',{class:'et'},'Talep: '+(s.TalepSayisi||0)),
+          s.SonKalipStatu&&el('span',{class:'et'},s.SonKalipStatu)))));
+    }catch(e){sonuc.innerHTML='';sonuc.append(el('div',{class:'hata'},e.message))}
+  }
+  let zaman;q.oninput=()=>{clearTimeout(zaman);zaman=setTimeout(ara,300)};
+  q.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(zaman);ara();q.blur()}};
+  k.append(el('div',{style:'max-width:760px;margin:0 auto'},el('h2',null,'Kalıp / Raf Ara'),
+    el('div',{class:'sekmeler',style:'margin-top:0'},bK,bR),
+    el('div',{class:'arac'},q,kamDugme(q,ara)),sonuc));
+  q.focus();ara();
+};
+
+// =========================================================== TALEP
+function oneriBagla(input,sec){
+  let kutu=null,items=[],idx=-1,zaman;
+  function kapat(){if(kutu){kutu.remove();kutu=null}items=[];idx=-1}
+  function ciz(){
+    if(kutu)kutu.remove();
+    if(!items.length){kutu=null;return}
+    const r=input.getBoundingClientRect();
+    kutu=el('div',{class:'oneri',style:'left:'+(r.left+scrollX)+'px;top:'+(r.bottom+scrollY+2)+'px'});
+    items.forEach((x,i)=>kutu.append(el('div',{class:i===idx?'on':'',onmousedown:e=>{e.preventDefault();kapat();sec(x.ParcaKodu)}},
+      x.ParcaKodu+'  •  '+(x.ParcaAdi||'')+'  •  '+(x.Lokasyon||'-')+'  •  '+(x.SahipBolum||'-'))));
+    document.body.append(kutu);
+  }
+  async function ac(){
+    const t=input.value.trim();
+    if(t.length<2){kapat();return}
+    try{const j=await api('/api/talep/kalipara?q='+encodeURIComponent(t));items=j.satirlar;idx=items.length?0:-1;ciz()}catch(e){kapat()}
+  }
+  input.addEventListener('input',()=>{clearTimeout(zaman);zaman=setTimeout(ac,250)});
+  input.addEventListener('blur',()=>setTimeout(kapat,150));
+  input.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'&&kutu){e.preventDefault();idx=Math.min(items.length-1,idx+1);ciz()}
+    else if(e.key==='ArrowUp'&&kutu){e.preventDefault();idx=Math.max(0,idx-1);ciz()}
+    else if(e.key==='Escape')kapat();
+    else if(e.key==='Enter'){
+      e.preventDefault();
+      const yaz=input.value.trim();
+      if(kutu&&items.length){
+        const tam=items.find(x=>String(x.ParcaKodu).toLocaleLowerCase('tr')===yaz.toLocaleLowerCase('tr'));
+        const x=tam||items[Math.max(0,idx)];kapat();sec(x.ParcaKodu);
+      }else{kapat();sec(yaz)}
+    }
+  });
+}
+
+SAYFALAR.talep=async function(k){
+  const det=ME.lokasyonDetay||[];
+  const U=x=>String(x||'').toLocaleUpperCase('tr');
+  const izinBolum=ME.tumBolum?ME.bolumler:(ME.kBolumler||[]);
+  const gorunur=b=>ME.tumBolum||ME.admin||(ME.kBolumler||[]).some(x=>U(x)===U(b));
+
+  let mevcut=null,satirlar=[],listeSatirlari=[];
+  const fNo=el('input',{readOnly:true,placeholder:'(otomatik)'});
+  const fBolum=sel(izinBolum,'',{},'-- seçin --');
+  const fAlici=sel(ME.bolumler,'',{},'-- seçin --');
+  const fOnc=sel(ME.oncelikler,'Normal',{});
+  const fEden=el('input',{value:ME.ad});
+  const fTarih=el('input',{type:'date',value:bugun()}),fTermin=el('input',{type:'date'});
+  const fStatu=el('input',{readOnly:true,value:'Açık'});
+  const fKapanis=el('input',{readOnly:true});
+  const fIptal=el('input',{type:'checkbox'});
+  const fKod=el('input',{placeholder:'Kalıp kodu yazın (liste açılır) ya da barkod okutup Enter',autocomplete:'off'});
+  const hata=el('div'),satirKutu=el('div'),bilgi=el('div',{class:'sinir'}),akisKutu=el('div');
+  const kilitliBolum=()=>!ME.tumBolum&&izinBolum.length<=1;
+  const gonderildi=()=>!!(mevcut&&mevcut.gonder);
+  const RENK={'Planlandı':'#334155','Sevkediliyor':'#92400e','Teslim Alındı':'#065f46','İşleniyor':'#1e40af','Tamamlandı':'#065f46','İade Edildi':'#7f1d1d','Hurdaya Ayrıldı':'#7f1d1d'};
+
+  function varsayilanAlici(){
+    if(fAlici.value&&U(fAlici.value)!==U(fBolum.value))return;
+    const k2=ME.bolumler.find(b=>U(b)==='KALIPHANE');
+    fAlici.value=(k2&&U(k2)!==U(fBolum.value))?k2:'';
+  }
+  fBolum.onchange=()=>{varsayilanAlici();ciz()};
+
+  function ciz(){
+    satirKutu.innerHTML='';
+    const kilit=gonderildi();
+    const tb=el('tbody');
+    satirlar.forEach((s,i)=>{
+      const st=el('span',{style:'padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap;background:'+(RENK[s.KalipStatu]||'#334155')},s.KalipStatu||'Planlandı');
+      const ac=el('input',{value:s.Aciklama||'',placeholder:'Bu kalıp için açıklama',oninput:()=>{s.Aciklama=ac.value}});
+      tb.append(el('tr',{style:'cursor:default'},
+        el('td',null,el('b',null,s.KalipKodu)),el('td',null,s.ParcaAdi||''),el('td',null,(s.TalepSira||1)+'. talep'),el('td',null,s.TashihSayisi||0),
+        el('td',null,st),el('td',null,s.Lokasyon||''),el('td',null,s.Raf||''),el('td',null,s.SahipBolum||''),el('td',{style:'min-width:220px'},ac),
+        el('td',null,kilit?'':el('button',{class:'b kirmizi',style:'padding:4px 10px',onclick:()=>{
+          if(s.SatirId>0&&!confirm(s.KalipKodu+' bu talepten çıkarılsın mı?'))return;satirlar.splice(i,1);ciz()}},'✕'))));
+    });
+    if(!satirlar.length)tb.append(el('tr',null,el('td',{colspan:10,style:'color:#9aa3d6'},'Henüz kalıp eklenmedi.')));
+    satirKutu.append(el('div',{class:'tw',style:'max-height:42vh'},el('table',{class:'tbl'},
+      el('thead',null,el('tr',null,['Kalıp kodu','Kalıp adı','Kalıp sayacı','Tashih','Kalıp statü','Lokasyon','Raf','Sahip bölüm','Kalıba özel açıklama',''].map(h=>el('th',null,h)))),tb)));
+    bilgi.textContent=satirlar.length+' kalıp'+(mevcut?'  •  '+mevcut.talepNo+' düzenleniyor':'  •  yeni talep');
+    akisCiz();
+  }
+
+  // ---- akış düğmeleri
+  async function islem(yol,govde,onay){
+    if(onay&&!confirm(onay))return;
+    hata.innerHTML='';
+    try{
+      const j=await api(yol,govde);
+      bildir(j.mesaj,'t');
+      await listeYenile();await yukle(j.id||mevcut.id);
+    }catch(e){hata.append(el('div',{class:'hata'},e.message))}
+  }
+  function akisCiz(){
+    akisKutu.innerHTML='';
+    if(!mevcut){akisKutu.append(el('div',{class:'sinir'},'Talebi açtıktan sonra "Talep Gönder" düğmesi çıkar. Gönderilene kadar kalıplar bulundukları yerde kalır.'));return}
+    const say=d=>satirlar.filter(s=>s.KalipStatu===d).length;
+    const planli=say('Planlandı'),sevk=say('Sevkediliyor');
+    const alici=mevcut.alici||'-';
+    const gonderenYetki=izin('talep_gonder')&&gorunur(mevcut.bolum),aliciYetki=izin('talep_teslim')&&gorunur(mevcut.alici);
+    const rafBekleyen=satirlar.filter(s=>['Teslim Alındı','Tamamlandı'].indexOf(s.KalipStatu)>=0&&!s.Raf);
+    const isleAdaylari=satirlar.filter(s=>s.KalipStatu==='Teslim Alındı'&&U(s.SahipBolum)!==U(mevcut.alici));
+    const dugmeler=[];
+    const kutuStil='margin-top:10px;padding:10px 12px;border-radius:10px;background:#1b2150;border:1px solid #2c3366';
+    if(mevcut.statu==='İptal'){akisKutu.append(el('div',{class:'sinir'},'Bu talep iptal edilmiş.'));return}
+    if(!gonderildi()){
+      if(planli>0&&gonderenYetki)dugmeler.push(el('button',{class:'b turuncu',onclick:()=>islem('/api/talep/gonder',{id:mevcut.id},satirlar.length+' kalıp '+alici+' bölümüne gönderilsin mi? Kalıplar '+mevcut.bolum+' ana lokasyonuna geçer.')},'📤 Talep Gönder → '+alici));
+      if(!planli)akisKutu.append(el('div',{class:'sinir'},'Gönderilecek kalıp yok.'));
+      if(planli>0&&!gonderenYetki)akisKutu.append(el('div',{class:'sinir'},'Talebi göndermek için "Talebi gönderme" yetkisi ve '+mevcut.bolum+' bölümü gerekir.'));
+    }else{
+      akisKutu.append(el('div',{style:'font-size:13px;color:#cbd5ff'},'Gönderildi: '+fmtTarih(mevcut.gonder)+'  •  '+mevcut.bolum+' → '+alici+'  •  Yolda: '+sevk+'  •  Teslim alınan: '+(satirlar.length-sevk-say('İade Edildi'))+(say('İade Edildi')?'  •  İade: '+say('İade Edildi'):'')));
+      if(mevcut.geriDondu){
+        akisKutu.append(el('div',{style:'margin-top:8px;padding:8px 10px;border-radius:8px;background:#78350f;color:#fde68a'},'⚠ '+alici+' bölümüne ulaşmayan '+sevk+' kalıp geri bildirildi'+(mevcut.geriTarihi?' ('+fmtTarih(mevcut.geriTarihi)+')':'')+'.'));
+        if(gonderenYetki){
+          dugmeler.push(el('button',{class:'b kirmizi',onclick:()=>islem('/api/talep/gerikapat',{id:mevcut.id},'Talep kapatılsın mı? Ulaşmayan '+sevk+' kalıp "İade Edildi" olur ve eski lokasyon/rafına geri döner. (Kalıplar size gelmemiş demektir.)')},'Talebi kapat ('+sevk+' kalıp iade)'));
+          dugmeler.push(el('button',{class:'b turuncu',onclick:()=>islem('/api/talep/tekrar',{id:mevcut.id},sevk+' kalıp tekrar '+alici+' bölümüne gönderilsin mi?')},'Tekrar gönder'));
+        }else akisKutu.append(el('div',{class:'sinir'},'Gönderen bölümün kararı bekleniyor.'));
+      }else{
+        if(sevk>0&&aliciYetki){
+          dugmeler.push(el('button',{class:'b yesil',onclick:teslimDialog},'📥 Teslim al ('+sevk+')'));
+          dugmeler.push(el('button',{class:'b gri',onclick:()=>islem('/api/talep/geribildir',{id:mevcut.id},'Teslim alınmayan '+sevk+' kalıp '+mevcut.bolum+' bölümüne geri bildirilsin mi? Talep kapanmaz; gönderen karar verir.')},'Gelmeyenleri geri bildir'));
+        }
+        if(sevk>0&&sevk===satirlar.length&&gonderenYetki)dugmeler.push(el('button',{class:'b gri',onclick:()=>islem('/api/talep/gonderiptal',{id:mevcut.id},'Gönderim iptal edilsin mi? Kalıplar Planlandı durumuna ve eski lokasyonlarına döner.')},'Gönderimi iptal et'));
+        if(sevk>0&&!aliciYetki)akisKutu.append(el('div',{class:'sinir'},'Teslim alma yetkisi '+alici+' bölümündeki yetkili kullanıcılardadır.'));
+      }
+    }
+    if(isleAdaylari.length&&izin('raf_kaldir')&&gorunur(mevcut.alici))dugmeler.push(el('button',{class:'b turuncu',onclick:()=>isleDialog(isleAdaylari)},'🛠 İşleme al ('+isleAdaylari.length+')'));
+    if(rafBekleyen.length&&izin('raf_kaldir')&&gorunur(mevcut.alici))dugmeler.push(el('button',{class:'b gri',onclick:()=>rafDialog(rafBekleyen)},'📍 Rafa kaldır ('+rafBekleyen.length+')'));
+    else if(rafBekleyen.length)akisKutu.append(el('div',{class:'sinir'},'Rafı girilmemiş '+rafBekleyen.length+' kalıp var (grup lideri rafa kaldırınca girer).'));
+    if(dugmeler.length)akisKutu.append(el('div',{class:'arac',style:'margin:8px 0 0'},dugmeler));
+    akisKutu.style.cssText=kutuStil;
+  }
+  function lokSecenekleri(bolum){
+    const l=det.filter(x=>U(x.Bolum)===U(bolum));
+    l.sort((a,b)=>(b.AnaMi?1:0)-(a.AnaMi?1:0));
+    return l.map(x=>x.Ad);
+  }
+  function teslimDialog(){
+    const alici=mevcut.alici,lokler=lokSecenekleri(alici);
+    if(!lokler.length){bildir(alici+' bölümü için tanımlı lokasyon yok. Önce "Bölümler ve Lokasyonlar" ekranından tanımlayın.','h');return}
+    const adaylar=satirlar.filter(s=>s.KalipStatu==='Sevkediliyor');
+    const hepsiLok=sel(lokler,lokler[0],{}),hepsiRaf=sel(ME.rafler,'',{},'(raf)');
+    const kutu=el('input',{type:'checkbox',checked:true});
+    const satirEl=adaylar.map(s=>{
+      const c=el('input',{type:'checkbox',checked:true}),lk=sel(lokler,lokler[0],{}),
+        sahibe=U(s.SahipBolum)===U(alici),rf=sel(ME.rafler,'',{disabled:!sahibe},sahibe?'-- raf seçin (zorunlu) --':'(grup lideri sonra girer)');
+      const isle=el('input',{type:'checkbox',disabled:sahibe||!izin('raf_kaldir'),title:'Tamir için raftan indirilir; statü İşleniyor olur'});
+      return {s,c,lk,rf,sahibe,isle};
+    });
+    hepsiLok.onchange=()=>satirEl.forEach(x=>x.lk.value=hepsiLok.value);
+    hepsiRaf.onchange=()=>satirEl.forEach(x=>{if(x.sahibe)x.rf.value=hepsiRaf.value});
+    kutu.onchange=()=>satirEl.forEach(x=>x.c.checked=kutu.checked);
+    const h2=el('div');
+    const tb=el('tbody');
+    satirEl.forEach(x=>tb.append(el('tr',{style:'cursor:default'},el('td',null,x.c),el('td',null,el('b',null,x.s.KalipKodu)),el('td',null,x.s.ParcaAdi||''),el('td',null,x.lk),el('td',null,x.rf,x.sahibe?el('div',{class:'sinir'},'sahibine dönüyor'):null),el('td',{style:'text-align:center'},x.sahibe?'-':x.isle))));
+    const m=modal(mevcut.talepNo+' - teslim al',el('div',null,
+      el('div',{class:'sinir'},mevcut.bolum+' bölümünden gelen kalıplar. Lokasyon seçmek zorunludur. Kalıp sahibine dönüyorsa raf da zorunludur ve kalıp "Tamamlandı" olup tamir adedi artar.'),
+      el('div',{class:'arac',style:'margin:8px 0'},el('span',{class:'sinir'},'Hepsi için lokasyon:'),hepsiLok,el('span',{class:'sinir'},'raf:'),hepsiRaf),
+      el('div',{class:'tw',style:'max-height:46vh'},el('table',{class:'tbl'},el('thead',null,el('tr',null,[el('th',null,kutu),el('th',null,'Kalıp'),el('th',null,'Adı'),el('th',null,'Lokasyon *'),el('th',null,'Raf'),el('th',null,'İşleme al')])),tb)),
+      h2,el('div',{class:'arac',style:'margin-top:10px'},
+        el('button',{class:'b yesil',onclick:async()=>{
+          h2.innerHTML='';
+          const sec=satirEl.filter(x=>x.c.checked);
+          if(!sec.length){h2.append(el('div',{class:'hata'},'Teslim alınacak kalıbı işaretleyin.'));return}
+          const eksik=sec.find(x=>!x.lk.value||(x.sahibe&&!x.rf.value));
+          if(eksik){h2.append(el('div',{class:'hata'},eksik.s.KalipKodu+' için '+(!eksik.lk.value?'lokasyon':'raf')+' seçilmeli.'));return}
+          const kalan=satirEl.length-sec.length;
+          if(kalan>0&&!confirm(kalan+' kalıp teslim alınmayacak; talep açık kalır. Devam edilsin mi?'))return;
+          const isleSay=sec.filter(x=>x.isle.checked&&!x.sahibe).length;
+          if(isleSay>0&&!confirm('⚠ '+isleSay+' kalıp İŞLENİYOR durumuna alınacak (tamir için raftan indirilmiş sayılır). Grup liderlerine bildirim gider. Emin misiniz?'))return;
+          try{
+            const j=await api('/api/talep/teslim',{id:mevcut.id,satirlar:sec.map(x=>({SatirId:x.s.SatirId,Lokasyon:x.lk.value,Raf:x.sahibe?x.rf.value:'',Isle:!x.sahibe&&x.isle.checked}))});
+            m.kapat();bildir(j.mesaj,'t');await listeYenile();await yukle(mevcut.id);
+          }catch(e){h2.append(el('div',{class:'hata'},e.message))}
+        }},'Teslim al'),el('button',{class:'b gri',onclick:()=>m.kapat()},'Vazgeç'))),true);
+  }
+  function isleDialog(adaylar){
+    const kutu=el('input',{type:'checkbox',checked:true}),h2=el('div'),tb=el('tbody');
+    const satirEl=adaylar.map(s=>({s,c:el('input',{type:'checkbox',checked:true})}));
+    kutu.onchange=()=>satirEl.forEach(x=>x.c.checked=kutu.checked);
+    satirEl.forEach(x=>tb.append(el('tr',{style:'cursor:default'},el('td',null,x.c),el('td',null,el('b',null,x.s.KalipKodu)),el('td',null,x.s.ParcaAdi||''),el('td',null,x.s.Lokasyon||''),el('td',null,x.s.Raf||'-'))));
+    const m=modal(mevcut.talepNo+' - işleme al',el('div',null,
+      el('div',{style:'padding:8px 10px;border-radius:8px;background:#78350f;color:#fde68a;margin-bottom:8px'},'⚠ Seçilen kalıplar tamir için raftan indirilir, raf bilgisi silinir ve statü "İşleniyor" olur. Grup liderlerine bildirim gider.'),
+      el('div',{class:'tw',style:'max-height:46vh'},el('table',{class:'tbl'},el('thead',null,el('tr',null,[el('th',null,kutu),el('th',null,'Kalıp'),el('th',null,'Adı'),el('th',null,'Lokasyon'),el('th',null,'Raf')])),tb)),h2,
+      el('div',{class:'arac',style:'margin-top:10px'},el('button',{class:'b turuncu',onclick:async()=>{
+        h2.innerHTML='';
+        const sec=satirEl.filter(x=>x.c.checked);
+        if(!sec.length){h2.append(el('div',{class:'hata'},'İşleme alınacak kalıbı işaretleyin.'));return}
+        try{
+          const j=await api('/api/talep/isle',{id:mevcut.id,satirlar:sec.map(x=>({SatirId:x.s.SatirId}))});
+          m.kapat();bildir(j.mesaj,'t');await listeYenile();await yukle(mevcut.id);
+        }catch(e){h2.append(el('div',{class:'hata'},e.message))}
+      }},'İşleme al'),el('button',{class:'b gri',onclick:()=>m.kapat()},'Vazgeç'))),true);
+  }
+  function rafDialog(adaylar){
+    const hepsi=sel(ME.rafler,'',{},'(hepsi için raf)');
+    const satirEl=adaylar.map(s=>({s,rf:sel(ME.rafler,'',{},'-- raf seçin --')}));
+    hepsi.onchange=()=>satirEl.forEach(x=>x.rf.value=hepsi.value);
+    const h2=el('div'),tb=el('tbody');
+    satirEl.forEach(x=>tb.append(el('tr',{style:'cursor:default'},el('td',null,el('b',null,x.s.KalipKodu)),el('td',null,x.s.ParcaAdi||''),el('td',null,x.s.Lokasyon||''),el('td',null,x.rf))));
+    const m=modal(mevcut.talepNo+' - rafa kaldır',el('div',null,
+      el('div',{class:'sinir'},'Her kalıp için raf seçmek zorunludur.'),el('div',{class:'arac',style:'margin:8px 0'},hepsi),
+      el('div',{class:'tw',style:'max-height:46vh'},el('table',{class:'tbl'},el('thead',null,el('tr',null,['Kalıp','Adı','Lokasyon','Raf *'].map(h=>el('th',null,h)))),tb)),h2,
+      el('div',{class:'arac',style:'margin-top:10px'},el('button',{class:'b yesil',onclick:async()=>{
+        h2.innerHTML='';
+        const eksik=satirEl.find(x=>!x.rf.value);
+        if(eksik){h2.append(el('div',{class:'hata'},eksik.s.KalipKodu+' için raf seçilmeli.'));return}
+        try{
+          const j=await api('/api/talep/rafa',{id:mevcut.id,satirlar:satirEl.map(x=>({SatirId:x.s.SatirId,Raf:x.rf.value}))});
+          m.kapat();bildir(j.mesaj,'t');await listeYenile();await yukle(mevcut.id);
+        }catch(e){h2.append(el('div',{class:'hata'},e.message))}
+      }},'Rafa kaldır'),el('button',{class:'b gri',onclick:()=>m.kapat()},'Vazgeç'))),true);
+  }
+
+  async function satirEkle(kodHam){
+    const kod=(kodHam||'').trim();
+    if(!kod)return;
+    hata.innerHTML='';
+    if(gonderildi()){bildir('Gönderilmiş talebe kalıp eklenemez.','h');return}
+    if(!fBolum.value){bildir('Önce "Gönderen bölüm"ü seçin; kalıbın bu bölümde olup olmadığı buna göre denetlenir.','h');fBolum.focus();return}
+    const n=x=>String(x).toLocaleLowerCase('tr');
+    if(satirlar.some(s=>n(s.KalipKodu)===n(kod))){bildir(kod+' bu talepte zaten var.','h');fKod.value='';return}
+    try{
+      const j=await api('/api/talep/ozet?'+qs({kod,id:mevcut?mevcut.id:0,bolum:fBolum.value}));
+      if(j.engel){alert(j.engel);return}
+      const o=j.ozet;
+      if(satirlar.some(s=>n(s.KalipKodu)===n(o.KalipKodu))){bildir(o.KalipKodu+' bu talepte zaten var.','h');fKod.value='';return}
+      satirlar.push({SatirId:0,KalipKodu:o.KalipKodu,ParcaAdi:o.ParcaAdi,KalipStatu:'Planlandı',Lokasyon:o.Lokasyon||'',Raf:'',SahipBolum:o.SahipBolum||fBolum.value,TalepSira:(o.TalepAdedi||0)+1,TashihSayisi:o.TashihSayisi||0,Aciklama:''});
+      if(!o.Bulundu)bildir(o.KalipKodu+' Kalıp Takip kayıtlarında bulunamadı; yine de eklendi.','b');
+      fKod.value='';ciz();fKod.focus();
+    }catch(e){bildir(e.message,'h')}
+  }
+  oneriBagla(fKod,satirEkle);
+
+  function bosTalep(){
+    mevcut=null;satirlar=[];
+    fNo.value='';fBolum.value=(izinBolum.indexOf(ME.bolum)>=0?ME.bolum:(!ME.tumBolum?(izinBolum[0]||''):(ME.bolum||'')));fBolum.disabled=!!kilitliBolum()&&!!fBolum.value;
+    fAlici.value='';varsayilanAlici();fAlici.disabled=false;
+    fOnc.value='Normal';fEden.value=ME.ad;
+    fTarih.value=bugun();fTermin.value='';fStatu.value='Açık';fKapanis.value='';fIptal.checked=false;fIptal.disabled=true;
+    hata.innerHTML='';ciz();
+    btnKaydet.textContent='Talep Aç';btnSil.style.display='none';
+    listeSec(null);
+  }
+  async function yukle(id){
+    try{
+      const j=await api('/api/talep/getir?id='+id);const t=j.talep;
+      mevcut={id:t.Id,surum:t.Surum,talepNo:t.TalepNo,aciklama:t.Aciklama,sonuc:t.Sonuc,statu:t.Statu,bolum:t.Bolum,alici:t.AliciBolum||'',gonder:t.GonderTarihi,geriDondu:!!t.GeriDondu,geriTarihi:t.GeriTarihi};
+      fNo.value=t.TalepNo||'';fBolum.value=t.Bolum||'';fBolum.disabled=true;fAlici.value=t.AliciBolum||'';fAlici.disabled=!!t.GonderTarihi;
+      fOnc.value=t.Oncelik||'Normal';fEden.value=t.TalepEden||'';
+      fTarih.value=iso10(t.TalepTarihi);fTermin.value=iso10(t.TerminTarihi);fStatu.value=t.Statu||'';fKapanis.value=fmtTarih(t.TamamlanmaTarihi);
+      fIptal.checked=t.Statu==='İptal';fIptal.disabled=!izin('talep_guncelle')||!!t.GonderTarihi;
+      satirlar=j.satirlar.map(s=>Object.assign({},s));
+      hata.innerHTML='';ciz();
+      btnKaydet.textContent='Güncelle';btnSil.style.display=(izin('talep_sil')&&(!t.GonderTarihi||t.Statu==='Kapandı'||t.Statu==='İptal'))?'':'none';
+      listeSec(id);
+    }catch(e){bildir(e.message,'h')}
+  }
+  async function kaydet(){
+    hata.innerHTML='';
+    if(!fBolum.value){hata.append(el('div',{class:'hata'},'"Gönderen bölüm" seçilmelidir.'));return}
+    if(!fAlici.value){hata.append(el('div',{class:'hata'},'"Alıcı bölüm" seçilmelidir.'));return}
+    const d={id:mevcut?mevcut.id:0,surum:mevcut?mevcut.surum:0,bolum:fBolum.value,aliciBolum:fAlici.value,oncelik:fOnc.value,talepEden:fEden.value,
+      talepTarihi:fTarih.value,terminTarihi:fTermin.value,aciklama:mevcut?mevcut.aciklama||'':'',sonuc:mevcut?mevcut.sonuc||'':'',
+      statu:fIptal.checked?'İptal':(mevcut&&mevcut.statu==='İptal'?'Açık':(mevcut?mevcut.statu:'Açık')),satirlar};
+    try{
+      const j=await api('/api/talep/kaydet',d);
+      bildir(j.mesaj,'t');
+      await listeYenile();
+      await yukle(j.id);
+    }catch(e){hata.append(el('div',{class:'hata'},e.message))}
+  }
+  const btnKaydet=el('button',{class:'b yesil',onclick:kaydet},'Talep Aç');
+  const btnSil=el('button',{class:'b kirmizi',style:'display:none',onclick:async()=>{
+    if(!mevcut||!confirm(mevcut.talepNo+' numaralı talep silinsin mi?'))return;
+    try{const j=await api('/api/talep/sil',{id:mevcut.id});bildir(j.mesaj,'t');await listeYenile();bosTalep()}catch(e){hata.append(el('div',{class:'hata'},e.message))}
+  }},'Sil');
+
+  // sağ liste
+  const ara=el('input',{placeholder:'Talep no, kalıp, bölüm, talep eden...'}),listeKutu=el('div');
+  function listeSec(id){[...listeKutu.querySelectorAll('tr')].forEach(tr=>tr.classList.toggle('sec',tr._id===id&&id!=null))}
+  function akisMetni(s){
+    if(s.Statu==='İptal')return 'İptal';
+    if(s.Statu==='Kapandı')return 'Kapandı';
+    if(s.GeriDondu)return '⚠ Geri döndü';
+    if(s.GonderTarihi)return s.Statu==='Kısmi Teslim Alındı'?'Kısmi teslim':'📤 Yolda';
+    return 'Planlandı';
+  }
+  async function listeYenile(){
+    try{
+      const j=await api('/api/talep/ara?'+qs({q:ara.value,limit:ara.value?300:50}));
+      listeSatirlari=j.satirlar;listeKutu.innerHTML='';
+      j.satirlar.forEach(s=>{s.Akis=akisMetni(s)});
+      const t=tablo([{alan:'TalepNo',baslik:'Talep no'},{alan:'Bolum',baslik:'Gönderen'},{alan:'AliciBolum',baslik:'Alıcı'},{alan:'Akis',baslik:'Durum'},{alan:'KalipAdedi',baslik:'Kalıp'},{alan:'TalepTarihi',baslik:'Tarih',tip:'Tarih'}],j.satirlar,{stil:'max-height:62vh',sec:s=>yukle(s.Id)});
+      [...t.querySelectorAll('tbody tr')].forEach((tr,i)=>{if(j.satirlar[i])tr._id=j.satirlar[i].Id});
+      listeKutu.append(t);
+      document.getElementById('listeBaslik').textContent=(ara.value?'Bulunan ':'Son ')+j.satirlar.length+' talep';
+      if(mevcut)listeSec(mevcut.id);
+    }catch(e){listeKutu.innerHTML='';listeKutu.append(el('div',{class:'hata'},e.message))}
+  }
+  let zaman;ara.oninput=()=>{clearTimeout(zaman);zaman=setTimeout(listeYenile,350)};
+
+  k.append(el('h2',null,'Talep'),el('div',{class:'iki'},
+    el('div',null,el('div',{class:'kart'},
+      el('div',{class:'alan'},el('div',null,el('label',null,'Talep no (otomatik)'),fNo),el('div',null,el('label',null,'Gönderen bölüm *'),fBolum),el('div',null,el('label',null,'Alıcı bölüm *'),fAlici),el('div',null,el('label',null,'Öncelik'),fOnc)),
+      el('div',{class:'alan'},el('div',null,el('label',null,'Talep eden'),fEden),el('div',null,el('label',null,'Talep tarihi'),fTarih),el('div',null,el('label',null,'Termin tarihi'),fTermin),el('div',null,el('label',null,'Talep statüsü (otomatik)'),fStatu),el('div',null,el('label',null,'Kapanış tarihi (otomatik)'),fKapanis)),
+      el('label',{style:'display:flex;align-items:center;gap:6px;color:#fecaca'},fIptal,'Talebi iptal et'),
+      el('label',null,'Kalıp ekle'),el('div',{class:'arac',style:'margin:0'},fKod,kamDugme(fKod,satirEkle),el('button',{class:'b yesil',onclick:()=>satirEkle(fKod.value)},'Kalıbı ekle'))),
+      akisKutu,
+      bilgi,satirKutu,hata,
+      el('div',{class:'arac',style:'margin-top:12px'},btnKaydet,el('button',{class:'b gri',onclick:bosTalep},'Boş talep'),btnSil)),
+    el('div',{class:'kart'},el('h3',{id:'listeBaslik',style:'margin-top:0'},'Talepler'),
+      el('div',{class:'arac'},ara,izin('talep_excel')&&el('button',{class:'b gri',onclick:()=>indir('/api/talep/excel?'+qs({q:ara.value}),'talepler.csv')},'Excel')),listeKutu)));
+  bosTalep();
+  await listeYenile();
+  const hid=Number(new URLSearchParams((location.hash.split('?')[1]||'')).get('id')||0);
+  if(hid)await yukle(hid);
+};
+
+// =========================================================== BİLDİRİM AYARLARI
+// =========================================================== CİHAZ ERİŞİMLERİ (yönetici)
+SAYFALAR.cihaz=async function(k){
+  const durumSec=sel([{v:'Bekliyor',t:'Onay bekleyenler'},{v:'Onaylı',t:'Onaylılar'},{v:'Reddedildi',t:'Reddedilenler'},{v:'',t:'Hepsi'}],'Bekliyor',{});
+  const ust=el('div',{class:'kart'}),liste=el('div');
+  async function yukle(){
+    try{
+      const a=await api('/api/cihaz/ayar');
+      ust.innerHTML='';
+      const kont=el('input',{type:'checkbox',checked:a.kontrol});
+      kont.onchange=async()=>{
+        if(kont.checked&&!confirm('Cihaz kontrolü AÇILSIN mı?\n\nBundan sonra listede "Onaylı" olmayan hiçbir cihaz (doğru parolayla bile) giremez. Şimdiye kadar giriş yapılan cihazlar listede onaylı görünür; açmadan önce listeyi gözden geçirin. Sunucu bilgisayarının kendisi (localhost) kontrolden muaftır.')){kont.checked=false;return}
+        try{const j=await api('/api/cihaz/ayar/kaydet',{kontrol:kont.checked});bildir(kont.checked?'Cihaz kontrolü AÇIK.':'Cihaz kontrolü kapalı.','t');yukle()}catch(e){bildir(e.message,'h');kont.checked=!kont.checked}
+      };
+      ust.append(el('label',{style:'display:flex;align-items:center;gap:8px;font-size:15px;color:var(--yazi);margin:0'},kont,el('b',null,'Cihaz kontrolü açık')),
+        el('div',{class:'sinir'},a.kontrol?'Yalnızca onaylı cihazlar giriş yapabilir. Yeni bir cihaz giriş denerse aşağıda "Onay bekleyenler" listesine düşer.':'Kontrol kapalı: giriş yapılan cihazlar şimdilik otomatik "Onaylı" olarak kaydediliyor. Açmadan önce listeyi kontrol edin, tanımadığınız cihazı silin.'));
+      const muaf=el('details',{style:'margin-top:8px'},el('summary',{style:'cursor:pointer;color:#c7d2fe'},'Cihaz kontrolünden muaf kullanıcılar'),
+        el('div',{class:'izl',style:'margin-top:6px'},a.kullanicilar.map(u=>{
+          const c=el('input',{type:'checkbox',checked:u.muaf});
+          c.onchange=async()=>{try{await api('/api/cihaz/ayar/kaydet',{kullaniciId:u.id,muaf:c.checked});bildir(u.ad+(c.checked?' muaf yapıldı.':' için kontrol uygulanacak.'),'t')}catch(e){bildir(e.message,'h');c.checked=!c.checked}};
+          return el('label',null,c,u.ad);
+        })));
+      ust.append(muaf);
+    }catch(e){ust.innerHTML='';ust.append(el('div',{class:'hata'},e.message))}
+    await ciz();
+  }
+  async function karar(id,durum,onay){
+    if(onay&&!confirm(onay))return;
+    try{const j=await api('/api/cihaz/karar',{id,durum});bildir(j.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
+  }
+  async function ciz(){
+    try{
+      const j=await api('/api/cihaz/liste?'+qs({durum:durumSec.value}));
+      liste.innerHTML='';
+      if(!j.satirlar.length){liste.append(el('div',{class:'sinir'},'Kayıt yok.'));return}
+      const renk={'Bekliyor':'#92400e','Onaylı':'#065f46','Reddedildi':'#7f1d1d'};
+      const tb=el('tbody');
+      j.satirlar.forEach(s=>{
+        let b={};try{b=JSON.parse(s.Bilgi||'{}')}catch(e){}
+        const bilgi=b.ua||s.Bilgi||'';const dp=b.depo||{};
+        const depoMetin=b.depo?['localStorage','cerez','indexedDB'].map(x=>(dp[x]?'✓ ':'✗ ')+({localStorage:'Yerel depo',cerez:'Çerez',indexedDB:'IndexedDB'}[x])).join('  '):'-';
+        tb.append(el('tr',{style:'cursor:default'},
+          el('td',null,el('b',null,s.Kullanici)),el('td',null,s.Ad||'-'),el('td',null,(b.tur||s.Tur||'')),el('td',{title:bilgi},(b.tarayici||'-')),el('td',null,b.isletim||'-'),el('td',null,s.Mac||'-'),el('td',null,s.Ip||''),
+          el('td',{title:'Giriş anında cihaz kodunun bulunduğu yerler'},depoMetin),
+          el('td',null,el('span',{style:'padding:2px 8px;border-radius:10px;font-size:12px;background:'+(renk[s.Durum]||'#334155')},s.Durum)),
+          el('td',null,fmtTarih(s.IlkIstek)),el('td',null,fmtTarih(s.SonGiris)),el('td',null,s.GirisSayisi||0),
+          el('td',{style:'white-space:nowrap'},
+            s.Durum!=='Onaylı'&&el('button',{class:'b yesil',style:'padding:5px 10px;margin-right:4px',onclick:()=>karar(s.Id,'Onaylı')},'Onayla'),
+            s.Durum!=='Reddedildi'&&el('button',{class:'b kirmizi',style:'padding:5px 10px;margin-right:4px',onclick:()=>karar(s.Id,'Reddedildi',s.Kullanici+' / '+(s.Ad||s.Ip)+' cihazı reddedilsin mi? Açık oturumları kapanır.')},'Reddet'),
+            el('button',{class:'b gri',style:'padding:5px 10px',onclick:async()=>{if(!confirm('Kayıt silinsin mi? Cihaz tekrar giriş denerse yeni istek açılır.'))return;try{const r=await api('/api/cihaz/sil',{id:s.Id});bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}}},'Sil'))));
+      });
+      liste.append(el('div',{class:'tw'},el('table',{class:'tbl'},
+        el('thead',null,el('tr',null,['Kullanıcı','Cihaz adı','Cihaz türü','Tarayıcı','İşletim sistemi','MAC','IP','Kod nerede saklı','Durum','İlk istek','Son giriş','Giriş','İşlem'].map(h=>el('th',null,h)))),tb)));
+    }catch(e){liste.innerHTML='';liste.append(el('div',{class:'hata'},e.message))}
+  }
+  durumSec.onchange=ciz;
+  k.append(el('h2',null,'Cihaz Erişimleri'),
+    el('div',{class:'sinir'},'Kullanıcı adı ve parola doğru olsa bile, yalnızca burada onaylı cihazlar sisteme girebilir. Her cihaz, ilk girişte oluşan bir cihaz kodu ile tanınır; MAC (aynı ağdaki cihazlar için), IP ve cihaz bilgisi kimin hangi cihaz olduğunu anlamanız için kaydedilir. MAC bilgisi telefonların rastgele Wi-Fi adresi nedeniyle değişebilir; karar cihaz koduna göre verilir.'),
+    ust,el('div',{class:'arac'},el('span',{class:'sinir'},'Göster:'),durumSec),liste);
+  await yukle();
+};
+
+SAYFALAR.bildirim=async function(k){
+  if(!ME.admin)throw new Error('Bu sayfa yalnızca yöneticiler içindir.');
+  const a=await api('/api/bildirim/ayar');
+  const tgAktif=el('input',{type:'checkbox',checked:a.tg_aktif==='1'}),tgToken=el('input',{type:'password',placeholder:a.tg_token_var?'Kayıtlı (değiştirmek için yenisini yazın)':'BotFather\'dan aldığınız anahtar',autocomplete:'new-password'});
+  const mailAktif=el('input',{type:'checkbox',checked:a.mail_aktif==='1'}),mHost=el('input',{value:a.mail_host||'',placeholder:'smtp.sirket.com'}),mPort=el('input',{value:a.mail_port||'587',style:'max-width:100px'}),
+    mSsl=el('input',{type:'checkbox',checked:a.mail_ssl==='1'}),mKul=el('input',{value:a.mail_kullanici||'',placeholder:'(sunucu istemiyorsa boş)',autocomplete:'off'}),
+    mPar=el('input',{type:'password',placeholder:a.mail_parola_var?'Kayıtlı (değiştirmek için yenisini yazın)':'',autocomplete:'new-password'}),mGon=el('input',{value:a.mail_gonderen||'',placeholder:'kalip@sirket.com'});
+  const link=el('input',{value:a.link_adres||'',placeholder:'https://192.168.3.47:8443'});
+  const hata=el('div'),tgListe=el('div'),logKutu=el('div');
+  const tgTest=el('input',{placeholder:'Telegram kimliği (sayı)'}),mailTest=el('input',{placeholder:'test e-posta adresi'});
+  async function kaydet(){
+    hata.innerHTML='';
+    try{
+      const j=await api('/api/bildirim/ayar/kaydet',{tg_aktif:tgAktif.checked?'1':'0',tg_token:tgToken.value,mail_aktif:mailAktif.checked?'1':'0',mail_host:mHost.value,mail_port:mPort.value,mail_ssl:mSsl.checked?'1':'0',
+        mail_kullanici:mKul.value,mail_parola:mPar.value,mail_gonderen:mGon.value,link_adres:link.value});
+      bildir(j.mesaj,'t');tgToken.value='';mPar.value='';
+    }catch(e){hata.append(el('div',{class:'hata'},e.message))}
+  }
+  async function test(kanal,hedef){
+    hata.innerHTML='';
+    try{await kaydet();const j=await api('/api/bildirim/test',{kanal,hedef});bildir(j.mesaj,'t');await logYenile()}
+    catch(e){hata.append(el('div',{class:'hata'},e.message))}
+  }
+  async function botBul(){
+    tgListe.innerHTML='';
+    try{
+      await kaydet();
+      const j=await api('/api/bildirim/telegram-bul');
+      if(!j.satirlar.length){tgListe.append(el('div',{class:'sinir'},'Bota yazan kimse bulunamadı. Kullanıcı Telegram\'da botu bulup "/start" ya da herhangi bir mesaj yazsın, sonra tekrar deneyin.'));return}
+      j.satirlar.forEach(x=>tgListe.append(el('div',{style:'margin:4px 0'},el('b',null,x.id),'  ',x.ad,'  ',
+        el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>{tgTest.value=x.id}},'Teste yaz'))));
+    }catch(e){tgListe.append(el('div',{class:'hata'},e.message))}
+  }
+  async function logYenile(){
+    logKutu.innerHTML='';
+    try{
+      const j=await api('/api/bildirim/log');
+      logKutu.append(tablo([{alan:'Tarih',baslik:'Tarih'},{alan:'Kanal',baslik:'Kanal'},{alan:'Alici',baslik:'Alıcı'},{alan:'Mesaj',baslik:'Mesaj'},{alan:'Durum',baslik:'Durum'},{alan:'Hata',baslik:'Hata'}],
+        j.satirlar.map(x=>Object.assign({},x,{Tarih:fmtTarih(x.Tarih)+' '+String(x.Tarih||'').slice(11,16)})),{stil:'max-height:40vh'}));
+    }catch(e){logKutu.append(el('div',{class:'hata'},e.message))}
+  }
+  k.append(el('h2',null,'Bildirim Ayarları'),el('div',{style:'max-width:880px'},
+    el('div',{class:'kart'},el('h3',{style:'margin-top:0'},'Telegram'),
+      el('div',{class:'sinir'},'1) Telegram\'da @BotFather ile konuşup /newbot yazın, adını verin; size bir anahtar (token) verir. 2) Anahtarı aşağı yapıştırıp kaydedin. 3) Bildirim alacak herkes botu Telegram\'da bulup bir mesaj yazsın. 4) "Bota yazanları bul"a basıp kimliklerini Kullanıcılar sayfasında kullanıcıya yazın.'),
+      el('label',{style:'display:flex;align-items:center'},tgAktif,'Telegram bildirimleri açık'),el('label',null,'Bot anahtarı'),tgToken,
+      el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b gri',onclick:botBul},'Bota yazanları bul')),tgListe,
+      el('div',{class:'arac'},tgTest,el('button',{class:'b gri',onclick:()=>test('telegram',tgTest.value)},'Test mesajı gönder'))),
+    el('div',{class:'kart',style:'margin-top:12px'},el('h3',{style:'margin-top:0'},'E-posta'),
+      el('div',{class:'sinir'},'Şirketin e-posta (SMTP) sunucusu bilgileri BT\'den alınır. Sunucu bu bilgisayardan kimlik istemiyorsa kullanıcı adı ve parola boş kalabilir.'),
+      el('label',{style:'display:flex;align-items:center'},mailAktif,'E-posta bildirimleri açık'),
+      el('div',{class:'alan'},el('div',null,el('label',null,'SMTP sunucu'),mHost),el('div',null,el('label',null,'Port'),mPort),el('div',null,el('label',{style:'display:flex;align-items:center'},mSsl,'SSL / TLS kullan'))),
+      el('div',{class:'alan'},el('div',null,el('label',null,'Kullanıcı adı'),mKul),el('div',null,el('label',null,'Parola'),mPar),el('div',null,el('label',null,'Gönderen adres'),mGon)),
+      el('div',{class:'arac'},mailTest,el('button',{class:'b gri',onclick:()=>test('mail',mailTest.value)},'Test e-postası gönder'))),
+    el('div',{class:'kart',style:'margin-top:12px'},el('h3',{style:'margin-top:0'},'Mesajdaki bağlantı'),
+      el('div',{class:'sinir'},'Mesajların sonuna talebe giden bağlantı eklenir. Telefonlardan açılan adresi yazın (örnek: https://192.168.3.47:8443). Boş bırakılırsa bağlantı eklenmez.'),link),
+    hata,el('div',{class:'arac',style:'margin-top:12px'},el('button',{class:'b yesil',onclick:kaydet},'Kaydet')),
+    el('div',{class:'kart',style:'margin-top:12px'},el('h3',{style:'margin-top:0'},'Gönderim kaydı (son 100)'),
+      el('div',{class:'arac',style:'margin:0 0 8px'},el('button',{class:'b gri',onclick:logYenile},'Yenile')),logKutu)));
+  await logYenile();
+};
+
+// =========================================================== KALIP - BÖLÜM ATAMASI
+SAYFALAR.atama=async function(k){
+  if(!izin('kl_ekle'))throw new Error('Bu sayfa için yetkiniz yok.');
+  const q=el('input',{placeholder:'Kalıp kodu / adı (boş = hepsi)'});
+  const bos=el('input',{type:'checkbox'});
+  const bolum=sel(ME.bolumler,'',{style:'flex:0 1 220px'},'-- bölüm seçin --');
+  const liste=el('div'),bilgi=el('div',{class:'sinir'}),hata=el('div');
+  const yapistir=el('textarea',{rows:4,placeholder:'Kod listesi yapıştırın (her satıra bir kalıp kodu; Excel sütunu olduğu gibi yapıştırılabilir)'});
+  let satirlar=[];const secili=new Set();
+  function sayacYaz(){bilgi.textContent=satirlar.length+' kalıp listelendi  •  '+secili.size+' seçili'}
+  function ciz(){
+    liste.innerHTML='';
+    const tum=el('input',{type:'checkbox',onchange:()=>{satirlar.forEach(x=>tum.checked?secili.add(x.KalipKodu):secili.delete(x.KalipKodu));ciz()}});
+    tum.checked=satirlar.length>0&&satirlar.every(x=>secili.has(x.KalipKodu));
+    const tb=el('tbody');
+    satirlar.forEach(x=>{
+      const c=el('input',{type:'checkbox',checked:secili.has(x.KalipKodu),onchange:()=>{c.checked?secili.add(x.KalipKodu):secili.delete(x.KalipKodu);sayacYaz()}});
+      tb.append(el('tr',{style:'cursor:default'},el('td',null,c),el('td',null,el('b',null,x.KalipKodu)),el('td',null,x.KalipAdi||''),
+        el('td',null,x.SahipBolum?el('span',{class:'et'},x.SahipBolum):el('span',{class:'et',style:'background:#713f12;color:#fde047'},'atanmamış')),el('td',null,x.Lokasyon||'')));
+    });
+    if(!satirlar.length)tb.append(el('tr',null,el('td',{colspan:5,style:'color:#9aa3d6'},'Kalıp yok.')));
+    liste.append(el('div',{class:'tw',style:'max-height:52vh'},el('table',{class:'tbl'},
+      el('thead',null,el('tr',null,el('th',null,tum),['Kalıp kodu','Kalıp adı','Sahip bölüm','Lokasyon'].map(h=>el('th',null,h)))),tb)));
+    sayacYaz();
+  }
+  async function yenile(){
+    try{
+      const j=await api('/api/atama/ara?'+qs({q:q.value,bos:bos.checked?1:''}));
+      satirlar=j.satirlar;ciz();
+      bilgi.textContent=satirlar.length+' kalıp listelendi'+(j.satirlar.length>=500?' (ilk 500; aramayı daraltın)':'')+'  •  toplam '+j.toplam+', sahibi atanmamış '+j.atanmamis+'  •  '+secili.size+' seçili';
+    }catch(e){liste.innerHTML='';liste.append(el('div',{class:'hata'},e.message))}
+  }
+  async function ata(kodlar,mesajOn){
+    hata.innerHTML='';
+    if(!kodlar.length){hata.append(el('div',{class:'hata'},'Önce kalıp seçin.'));return}
+    if(!bolum.value&&!confirm(kodlar.length+' kalıbın sahip bölümü KALDIRILSIN mı?'))return;
+    try{
+      const j=await api('/api/atama/kaydet',{kodlar,bolum:bolum.value});
+      bildir(j.mesaj,'t');secili.clear();yapistir.value='';await yenile();
+    }catch(e){hata.append(el('div',{class:'hata'},e.message))}
+  }
+  let zaman;q.oninput=()=>{clearTimeout(zaman);zaman=setTimeout(yenile,350)};
+  q.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(zaman);yenile()}};
+  bos.onchange=yenile;
+  k.append(el('h2',null,'Kalıp - Bölüm Ataması'),
+    el('div',{class:'sinir'},'Her kalıbın sahibi bir bölümdür. Kullanıcılara yalnızca kendi bölümlerinin kalıpları gösterilir (Kullanıcılar ekranında bölüm atanır). Sahibi atanmamış kalıpları herkes görür.'),
+    el('div',{class:'kart'},
+      el('div',{class:'arac'},q,el('label',{style:'display:flex;align-items:center;gap:6px;margin:0'},bos,'Yalnız sahibi atanmamışlar'),
+        el('button',{class:'b gri',onclick:yenile},'Ara')),
+      bilgi,liste,
+      el('div',{class:'arac',style:'margin-top:10px'},el('span',{class:'sinir'},'Seçilenleri şu bölüme ata:'),bolum,
+        el('button',{class:'b yesil',onclick:()=>ata([...secili])},'Seçilenlere ata')),
+      el('div',{class:'izg',style:'margin-top:16px'},'Listeden yapıştırarak ata'),yapistir,
+      el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b',onclick:()=>{
+        const kodlar=yapistir.value.split(/[\r\n;\t]+/).map(x=>x.trim()).filter(Boolean);ata(kodlar)
+      }},'Yapıştırılanlara ata (yukarıdaki bölüme)')),hata));
+  await yenile();
+};
+
+// =========================================================== RAFLAR
+SAYFALAR.raflar=async function(k){
+  const j=await api('/api/raflar');
+  const duzen=izin('kl_ekle');
+  const tb=el('tbody');
+  function satir(ad,say){
+    const i=el('input',{value:ad||'',readOnly:!duzen,style:'text-transform:uppercase'});
+    const tr=el('tr',{style:'cursor:default'},el('td',null,i),el('td',null,say==null?'0':say),
+      duzen&&el('td',null,el('button',{class:'b kirmizi',style:'padding:4px 10px',onclick:()=>tr.remove()},'✕')));
+    tr._i=i;tb.append(tr);return i;
+  }
+  j.satirlar.forEach(x=>satir(x.Ad,x.KalipSayisi));
+  const hata=el('div');
+  k.append(el('h2',null,'Raflar'),el('div',{class:'sinir'},'Raf adlarını burada tanımlayın; kalıplara yalnızca tanımlı raflar atanabilir. İçinde kalıp olan raf silinemez.'),
+    el('div',{class:'kart',style:'max-width:620px'},
+      el('div',{class:'tw',style:'max-height:56vh'},el('table',{class:'tbl'},el('thead',null,el('tr',null,el('th',null,'Raf'),el('th',null,'Rafta kalıp'),duzen&&el('th'))),tb)),hata,
+      duzen&&el('div',{class:'arac',style:'margin-top:10px'},
+        el('button',{class:'b yesil',onclick:()=>{const i=satir('',0);i.focus()}},'+ Raf ekle'),
+        kamDugme({},raf=>{
+          const var_=[...tb.querySelectorAll('tr')].some(t=>t._i.value.toUpperCase()===raf.toUpperCase());
+          if(var_)bildir(raf+' rafı listede zaten var.','t');
+          else{const i=satir(raf,0);i.scrollIntoView({block:'center'});bildir(raf+' rafı eklendi.','t')}
+        },{raf:true,etiket:'Listeye ekle'}),
+        el('button',{class:'b',onclick:async()=>{
+          hata.innerHTML='';
+          try{const r=await api('/api/raflar/kaydet',{adlar:[...tb.querySelectorAll('tr')].map(t=>t._i.value)});await metaYenile();bildir(r.mesaj,'t');yonlendir()}
+          catch(e){hata.append(el('div',{class:'hata'},e.message))}
+        }},'Kaydet'))));
+};
+
+// =========================================================== HIZLI İŞLEM
+SAYFALAR.hizli=function(k){
+  const rKod=el('input',{autocomplete:'off',enterkeyhint:'next'}),rRaf=combo(el('input',{style:'text-transform:uppercase'}),ME.rafler);
+  const rMsj=el('div');
+  function msj(h,tur,m){h.innerHTML='';if(m)h.append(el('div',{class:tur==='h'?'hata':'tamam'},m))}
+  async function rafYaz(bosalt){
+    const kod=rKod.value.trim(),raf=bosalt?'':rRaf.value.trim();
+    if(!kod){msj(rMsj,'h','Kalıp kodunu girin.');return}
+    if(!bosalt&&!raf){msj(rMsj,'h','Raf adını girin.');rRaf.focus();return}
+    try{const j=await api('/api/raf',{kod,raf});msj(rMsj,'t',j.mesaj+(j.bulundu?'':' (kalıp listede yoktu, yeni eklendi)'));rKod.value='';if(bosalt)rRaf.value='';rKod.focus()}
+    catch(e){msj(rMsj,'h',e.message)}
+  }
+  rKod.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();rRaf.value?rafYaz(false):rRaf.focus()}};
+  rRaf.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();rafYaz(false)}};
+  const dKod=el('input',{autocomplete:'off'}),dStatu=sel(ME.kalipStatuleri,'Teslim Alındı',{}),dMsj=el('div');
+  async function durumYaz(){
+    const kod=dKod.value.trim();if(!kod){msj(dMsj,'h','Kalıp kodunu girin.');return}
+    try{const j=await api('/api/durum',{kod,statu:dStatu.value});msj(dMsj,'t',j.mesaj);dKod.value='';dKod.focus()}catch(e){msj(dMsj,'h',e.message)}
+  }
+  dKod.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();durumYaz()}};
+  k.append(el('h2',null,'Hızlı İşlem'),veriListe('dlRaf',ME.rafler),el('div',{class:'alan'},
+    izin('kl_ekle')&&el('div',{class:'kart'},el('h3',{style:'margin-top:0'},'Rafa yerleştir'),
+      el('label',null,'Kalıp kodu (okutun ya da yazın)'),el('div',{class:'arac',style:'margin:0'},rKod,kamDugme(rKod,()=>rKod.onkeydown({key:'Enter',preventDefault(){}}))),
+      el('label',null,'Raf (okutun ya da yazın)'),el('div',{class:'arac',style:'margin:0'},rRaf,kamDugme({},raf=>{rRaf.value=raf},{raf:true,etiket:'Rafı seç'})),rMsj,
+      el('div',{class:'arac',style:'margin-top:10px'},el('button',{class:'b yesil',onclick:()=>rafYaz(false)},'Rafa yerleştir'),el('button',{class:'b gri',onclick:()=>rafYaz(true)},'Raftan al'))),
+    izin('talep_kalip_durum')&&el('div',{class:'kart'},el('h3',{style:'margin-top:0'},'Kalıp işlemi (teslim alma)'),
+      el('label',null,'Kalıp kodu (okutun ya da yazın)'),el('div',{class:'arac',style:'margin:0'},dKod,kamDugme(dKod,durumYaz)),
+      el('label',null,'Yeni kalıp statüsü'),dStatu,dMsj,
+      el('div',{class:'arac',style:'margin-top:10px'},el('button',{class:'b yesil',onclick:durumYaz},'Uygula')),
+      el('div',{class:'sinir'},'Lokasyon statüye göre otomatik atanır; talep statüsü de güncellenir.'))));
+};
+
+// =========================================================== KULLANICILAR
+SAYFALAR.kul=async function(k){
+  if(!ME.admin)throw new Error('Bu sayfa yalnızca yöneticiler içindir.');
+  let secili=null;
+  const liste=el('div'),form=el('div',{class:'kart'});
+  async function yenile(){
+    const j=await api('/api/kul/liste');
+    liste.innerHTML='';
+    const t=tablo([{alan:'ad',baslik:'Kullanıcı'},{alan:'bolumM',baslik:'Bölümler'},{alan:'adminM',baslik:'Yönetici'},{alan:'aktifM',baslik:'Aktif'}],
+      j.satirlar.map(x=>Object.assign({adminM:x.admin?'✓':'',aktifM:x.aktif?'✓':'✗',bolumM:x.admin||x.tum?'TÜMÜ':(x.bolumler||[]).join(', ')},x)),{sec:(s,tr)=>{secIsaretle(tr);formCiz(s)}});
+    liste.append(t);
+  }
+  function formCiz(s){
+    secili=s;form.innerHTML='';
+    const ad=el('input',{value:s?s.ad:''}),par=el('input',{type:'password',placeholder:s?'Boş bırakırsanız değişmez':'Yeni kullanıcı için zorunlu',autocomplete:'new-password'});
+    const tum=el('input',{type:'checkbox',checked:s?!!s.tum:true});
+    const bolKutular={},bolKutu=el('div',{class:'izl'});
+    ME.bolumler.forEach(b=>{
+      const c=el('input',{type:'checkbox',checked:s?(s.bolumler||[]).some(x=>String(x).toLocaleUpperCase('tr')===b.toLocaleUpperCase('tr')):false});
+      bolKutular[b]=c;bolKutu.append(el('label',null,c,b));
+    });
+    tum.onchange=()=>{Object.keys(bolKutular).forEach(b=>{bolKutular[b].disabled=tum.checked})};tum.onchange();
+    const adm=el('input',{type:'checkbox',checked:s?s.admin:false}),akt=el('input',{type:'checkbox',checked:s?s.aktif:true});
+    const eposta=el('input',{value:s?s.email||'':'',placeholder:'ad@sirket.com',type:'email'}),tg=el('input',{value:s?s.telegram||'':'',placeholder:'Telegram kimliği (sayı)'}),bld=el('input',{type:'checkbox',checked:s?!!s.bildirim:false});
+    const kutular={};
+    const gruplar=[...new Set(ME.tanimlar.map(t=>t.grup))];
+    const izKutu=el('div',{class:'izl'});
+    function uygula(){
+      gruplar.forEach(g=>{
+        const anahtar=ME.tanimlar.find(t=>t.grup===g&&t.grupAnahtari);
+        ME.tanimlar.filter(t=>t.grup===g).forEach(t=>{
+          const c=kutular[t.anahtar];
+          if(adm.checked){c.disabled=true;c.checked=true}
+          else c.disabled=!!anahtar&&t.anahtar!==anahtar.anahtar&&!kutular[anahtar.anahtar].checked;
+        });
+      });
+    }
+    gruplar.forEach(g=>{
+      izKutu.append(el('div',{class:'izg'},g));
+      ME.tanimlar.filter(t=>t.grup===g).forEach(t=>{
+        const c=el('input',{type:'checkbox',checked:s?s.izinler.indexOf(t.anahtar)>=0:false,onchange:uygula});
+        kutular[t.anahtar]=c;izKutu.append(el('label',null,c,t.ad));
+      });
+    });
+    adm.onchange=uygula;uygula();
+    if(s&&s.admin)ME.tanimlar.forEach(t=>kutular[t.anahtar].checked=true);
+    const hata=el('div');
+    form.append(el('h3',{style:'margin-top:0'},s?s.ad+' - düzenle':'Yeni kullanıcı'),veriListe('dlBol',ME.bolumler),
+      el('label',null,'Kullanıcı adı'),ad,el('label',null,'Parola'),par,el('div',{class:'izg',style:'margin-top:12px'},'Bölümler / lokasyonlar'),
+      el('label',{style:'display:flex;align-items:center'},tum,'Tüm bölümler (kısıtlama yok)'),
+      bolKutu,el('div',{class:'sinir'},'İşaretlenen bölümlerin kalıplarını ve taleplerini görür; talebi yalnızca bu bölümler adına açabilir. Hiçbiri işaretlenmezse yalnızca sahibi atanmamış kalıpları görür.'),
+      el('label',{style:'display:flex;align-items:center;margin-top:10px'},adm,'Yönetici (tüm yetkiler + kullanıcı yönetimi)'),
+      el('label',{style:'display:flex;align-items:center'},akt,'Aktif'),
+      el('div',{class:'izg',style:'margin-top:12px'},'Bildirim'),
+      el('label',{style:'display:flex;align-items:center'},bld,'Bildirim al (kendi bölümlerine gelen talep haberleri)'),
+      el('label',null,'E-posta'),eposta,el('label',null,'Telegram kimliği'),tg,
+      el('div',{class:'sinir'},'Kimliği bulmak için kişi Telegram\'da botu açıp bir mesaj yazsın; Bildirim Ayarları sayfasındaki "Bota yazanları bul" listeler.'),
+      el('div',{class:'izg',style:'margin-top:12px'},'Yetkiler'),izKutu,hata,
+      el('div',{class:'arac',style:'margin-top:12px'},
+        el('button',{class:'b yesil',onclick:async()=>{
+          hata.innerHTML='';
+          try{
+            const j=await api('/api/kul/kaydet',{id:s?s.id:0,ad:ad.value,parola:par.value,tum:tum.checked,bolumler:Object.keys(bolKutular).filter(b=>bolKutular[b].checked),admin:adm.checked,aktif:akt.checked,email:eposta.value,telegram:tg.value,bildirim:bld.checked,
+              izinler:ME.tanimlar.filter(t=>kutular[t.anahtar].checked&&!adm.checked).map(t=>t.anahtar)});
+            bildir(j.mesaj,'t');await metaYenile();await yenile();formCiz(null);
+          }catch(e){hata.append(el('div',{class:'hata'},e.message))}
+        }},'Kaydet'),
+        el('button',{class:'b gri',onclick:()=>formCiz(null)},'Yeni'),
+        s&&el('button',{class:'b kirmizi',onclick:async()=>{
+          if(!confirm(s.ad+' silinsin mi?'))return;
+          try{const j=await api('/api/kul/sil',{id:s.id});bildir(j.mesaj,'t');await yenile();formCiz(null)}catch(e){hata.append(el('div',{class:'hata'},e.message))}
+        }},'Sil')));
+  }
+  k.append(el('h2',null,'Kullanıcılar'),el('div',{class:'iki',style:'grid-template-columns:minmax(0,1fr) 460px'},el('div',null,liste),form));
+  formCiz(null);
+  await yenile();
+};
+
+// =========================================================== BÖLÜMLER VE LOKASYONLAR
+SAYFALAR.lok=async function(k){
+  if(!ME.admin)throw new Error('Bu sayfa yalnızca yöneticiler içindir.');
+  const j=await api('/api/lok');
+  const bolumler={};
+  j.satirlar.forEach(x=>{const b=bolumler[x.Bolum]||(bolumler[x.Bolum]={ana:'',alt:[]});if(x.AnaMi)b.ana=x.Ad;else b.alt.push(x.Ad)});
+  const tb=el('tbody');
+  function satir(bolum,ana,alt){
+    const b=el('input',{value:bolum,style:'text-transform:uppercase;min-width:160px'}),a=el('input',{value:ana,style:'text-transform:uppercase;min-width:160px'}),
+      t=el('textarea',{rows:3,style:'min-width:260px;text-transform:uppercase',placeholder:'Her satıra bir alt lokasyon'});t.value=alt.join('\n');
+    const tr=el('tr',{style:'cursor:default'},el('td',null,b),el('td',null,a),el('td',null,t),el('td',null,el('button',{class:'b kirmizi',style:'padding:4px 10px',onclick:()=>tr.remove()},'✕')));
+    tr._v=()=>({b:b.value,a:a.value,t:t.value});tb.append(tr);return b;
+  }
+  Object.keys(bolumler).forEach(b=>satir(b,bolumler[b].ana,bolumler[b].alt));
+  const hata=el('div');
+  k.append(el('h2',null,'Bölümler ve Lokasyonlar'),
+    el('div',{class:'sinir'},'Her bölümün bir ana lokasyonu vardır (talep açılınca kalıp oraya yerleşir). Alt lokasyonlar (raf, hat vb.) ana lokasyona bağlıdır. Hiçbir lokasyon bağımsız kalamaz.'),
+    el('div',{class:'kart'},el('div',{class:'tw',style:'max-height:62vh'},el('table',{class:'tbl'},el('thead',null,el('tr',null,['Bölüm','Ana lokasyon','Alt lokasyonlar',''].map(h=>el('th',null,h)))),tb)),hata,
+      el('div',{class:'arac',style:'margin-top:10px'},el('button',{class:'b yesil',onclick:()=>satir('','',[]).focus()},'+ Bölüm ekle'),
+        el('button',{class:'b',onclick:async()=>{
+          hata.innerHTML='';
+          const liste=[];
+          for(const tr of tb.querySelectorAll('tr')){
+            const v=tr._v(),bolum=v.b.trim().toLocaleUpperCase('tr'),ana=v.a.trim().toLocaleUpperCase('tr');
+            const alt=v.t.split('\n').map(x=>x.trim().toLocaleUpperCase('tr')).filter(Boolean);
+            if(!bolum&&!ana&&!alt.length)continue;
+            if(!bolum){hata.append(el('div',{class:'hata'},'Bölüm adı boş bırakılamaz.'));return}
+            if(!ana){hata.append(el('div',{class:'hata'},bolum+' bölümünün ana lokasyonunu yazın.'));return}
+            liste.push({Ad:ana,Bolum:bolum,AnaMi:true});alt.forEach(a=>liste.push({Ad:a,Bolum:bolum,AnaMi:false}));
+          }
+          try{const r=await api('/api/lok/kaydet',{liste});await metaYenile();bildir(r.mesaj,'t')}catch(e){hata.append(el('div',{class:'hata'},e.message))}
+        }},'Kaydet'))));
+};
+
+// =========================================================== AÇILIŞ
+(async function(){
+  if(T){try{await basla();return}catch(e){}}
+  girisGoster();
+})();
+</script>
+</body>
+</html>
