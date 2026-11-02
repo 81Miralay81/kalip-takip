@@ -121,7 +121,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='02.11.2026-P';
+const SURUM='02.11.2026-R';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -614,6 +614,7 @@ SAYFALAR.portal=function(k){
     ['Kalıp - Bölüm Ataması','Kalıbın sahibi bölümü ata; bölümler yalnızca kendi kalıplarını görür','atama','linear-gradient(135deg,#f97316,#ef4444)',izin('kl_ekle')],
     ['Raflar','Raf adlarını tanımla','raflar','linear-gradient(135deg,#06b6d4,#10b981)',izin('kl_gor')],
     ['Hızlı İşlem','Rafa yerleştir, teslim al (barkodla)','hizli','linear-gradient(135deg,#7c3aed,#3b82f6)',izin('kl_ekle')||izin('talep_kalip_durum')],
+    ['Kalıp ve Kayıt Türleri','Kalıp türü ve Tür (Tashih/İlave/Hurda...) değerlerini ekle, adını değiştir, sil','turler','linear-gradient(135deg,#f59e0b,#14b8a6)',ME.admin],
     ['Kullanıcılar','Kullanıcı, bölüm ve yetki yönetimi','kul','linear-gradient(135deg,#10b981,#0d9488)',ME.admin],
     ['Bölümler ve Lokasyonlar','Bölüm, ana ve alt lokasyonlar','lok','linear-gradient(135deg,#3b82f6,#06b6d4)',ME.admin],
     ['Bildirim Ayarları','Telegram ve e-posta bildirimleri; gönderim kaydı','bildirim','linear-gradient(135deg,#ec4899,#8b5cf6)',ME.admin],
@@ -1434,6 +1435,46 @@ SAYFALAR.raflar=async function(k){
           try{const r=await api('/api/raflar/kaydet',{adlar:[...tb.querySelectorAll('tr')].map(t=>t._i.value)});await metaYenile();bildir(r.mesaj,'t');yonlendir()}
           catch(e){hata.append(el('div',{class:'hata'},e.message))}
         }},'Kaydet'))));
+};
+
+
+// =========================================================== TÜRLER (kalıp türü / kayıt türü)
+SAYFALAR.turler=async function(k){
+  if(!ME.admin)throw new Error('Bu sayfa yalnızca yöneticiler içindir.');
+  const GRUPLAR=[['KalipTuru','Kalıp türleri','Kalıp Listesi ve Kalıp Takip\'te "Kalıp türü" olarak seçilen değerler'],['Tur','Kayıt türleri (Tür)','Kalıp Takip kaydındaki Tür: Tashih, İlave, Yeni, Hurda gibi']];
+  let grup='KalipTuru';
+  const ust=el('div',{class:'sekmeler'}),icerik=el('div'),yeni=el('input',{placeholder:'Yeni değer yazın',style:'text-transform:none'});
+  async function yukle(){
+    ust.innerHTML='';
+    GRUPLAR.forEach(g=>ust.append(el('button',{class:'b '+(g[0]===grup?'':'gri'),type:'button',onclick:()=>{grup=g[0];yukle()}},g[1])));
+    icerik.innerHTML='';
+    let j;try{j=await api('/api/liste?grup='+grup)}catch(e){icerik.append(el('div',{class:'hata'},e.message));return}
+    const aciklama=GRUPLAR.find(g=>g[0]===grup)[2];
+    icerik.append(el('div',{class:'sinir'},aciklama+'. Adı değiştirirseniz o değeri kullanan tüm kayıtlar da yeni adla güncellenir. Kayıtlarda kullanılan değer silinemez.'));
+    const tb=el('tbody');
+    j.satirlar.forEach(s=>{
+      const i=el('input',{value:s.Deger,style:'text-transform:none'});
+      tb.append(el('tr',{style:'cursor:default'},el('td',null,i),el('td',null,String(s.Kullanim)),el('td',null,s.Listede?'Evet':'Hayır (yalnız kayıtlarda)'),
+        el('td',null,el('div',{class:'arac',style:'margin:0'},
+          el('button',{class:'b',type:'button',style:'padding:4px 10px',onclick:async()=>{
+            if(!i.value.trim()||i.value.trim()===s.Deger){bildir('Önce adı değiştirin.','h');return}
+            if(s.Kullanim>0&&!await onay(s.Kullanim+' kayıttaki "'+s.Deger+'" değeri "'+i.value.trim()+'" olarak güncellenecek. Devam edilsin mi?'))return;
+            try{const r=await api('/api/liste/ad',{grup,eski:s.Deger,yeni:i.value.trim()});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
+          }},'Adı değiştir'),
+          el('button',{class:'b kirmizi',type:'button',style:'padding:4px 10px',title:s.Kullanim>0?'Kayıtlarda kullanılıyor, silinemez':'Sil',disabled:s.Kullanim>0,onclick:async()=>{
+            if(!await onay('"'+s.Deger+'" listeden silinsin mi?'))return;
+            try{const r=await api('/api/liste/sil',{grup,deger:s.Deger});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
+          }},'✕')))));
+    });
+    icerik.append(el('div',{class:'tw',style:'max-height:52vh'},el('table',{class:'tbl'},el('thead',null,el('tr',null,el('th',null,'Değer'),el('th',null,'Kullanıldığı kayıt'),el('th',null,'Listede'),el('th'))),tb)));
+    yeni.value='';
+    icerik.append(el('div',{class:'arac',style:'margin-top:10px'},yeni,el('button',{class:'b yesil',type:'button',onclick:async()=>{
+      if(!yeni.value.trim()){bildir('Değer yazın.','h');return}
+      try{const r=await api('/api/liste/ekle',{grup,deger:yeni.value.trim()});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
+    }},'+ Ekle')));
+  }
+  k.append(el('h2',null,'Kalıp ve Kayıt Türleri'),ust,el('div',{class:'kart',style:'max-width:760px'},icerik));
+  await yukle();
 };
 
 // =========================================================== HIZLI İŞLEM

@@ -403,6 +403,35 @@ namespace KalipTakip.Sunucu
                     Gerekli(k, Izin.KalipListeGor);
                     Json(ctx, 200, new { satirlar = Duz(RafRepository.Listele()) });
                     return true;
+                // ---- Liste değerleri: kalıp türleri ve kayıt türleri (yönetici)
+                case "/api/liste":
+                    YoneticiGerekli(k);
+                    Json(ctx, 200, new { satirlar = Duz(ListeRepository.Listele(Q(ctx, "grup"))) });
+                    return true;
+                case "/api/liste/ekle":
+                    YoneticiGerekli(k);
+                    {
+                        Dictionary<string, object> g = Govde(ctx);
+                        ListeRepository.Ekle(Metin(g, "grup"), Metin(g, "deger"));
+                        Json(ctx, 200, new { mesaj = "Eklendi." });
+                    }
+                    return true;
+                case "/api/liste/ad":
+                    YoneticiGerekli(k);
+                    {
+                        Dictionary<string, object> g = Govde(ctx);
+                        int n = ListeRepository.Adlandir(Metin(g, "grup"), Metin(g, "eski"), Metin(g, "yeni"));
+                        Json(ctx, 200, new { mesaj = "Ad değiştirildi" + (n > 0 ? "; " + n + " kayıt güncellendi." : ".") });
+                    }
+                    return true;
+                case "/api/liste/sil":
+                    YoneticiGerekli(k);
+                    {
+                        Dictionary<string, object> g = Govde(ctx);
+                        ListeRepository.Sil(Metin(g, "grup"), Metin(g, "deger"));
+                        Json(ctx, 200, new { mesaj = "Silindi." });
+                    }
+                    return true;
                 case "/api/raflar/ekle":
                     Gerekli(k, Izin.KalipListeEkle);
                     {

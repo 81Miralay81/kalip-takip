@@ -178,4 +178,108 @@ Public NotInheritable Class ListeRepository
         Dim dt As DataTable = Db.Tablo("SELECT Deger FROM Liste WHERE Grup = ? ORDER BY Sira, Id", grup)
         Return dt.Rows.Cast(Of DataRow)().Select(Function(r) Convert.ToString(r("Deger"))).ToList()
     End Function
+
+    Private Shared Function Kolon(grup As String) As String
+        If grup = GrupKalipTuru Then Return "KalipTuru"
+        If grup = GrupTur Then Return "Tur"
+        Throw New InvalidOperationException("Bilinmeyen liste: " & grup)
+    End Function
+
+    ''' <summary>Yönetim ekranı: listedeki değerler + kalıp kayıtlarında kullanılıp listede olmayanlar. Sütunlar: Deger, Kullanim (kaç kalıp kaydında), Listede.</summary>
+    Public Shared Function Listele(grup As String) As DataTable
+        Dim k As String = Kolon(grup)
+        Dim sonuc As New DataTable()
+        sonuc.Columns.Add("Deger", GetType(String))
+        sonuc.Columns.Add("Kullanim", GetType(Long))
+        sonuc.Columns.Add("Listede", GetType(Boolean))
+        Dim kullanim As New Dictionary(Of String, Long)(StringComparer.OrdinalIgnoreCase)
+        For Each r As DataRow In Db.Tablo("SELECT TRIM(" & k & ") AS D, COUNT(*) AS N FROM Kalip WHERE " & k & " IS NOT NULL AND TRIM(" & k & ") <> '' GROUP BY TRIM(" & k & ")").Rows
+            Dim d As String = Convert.ToString(r("D"))
+            Dim n As Long = Convert.ToInt64(r("N"))
+            If kullanim.ContainsKey(d) Then kullanim(d) += n Else kullanim(d) = n
+        Next
+        Dim eklenen As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
+        For Each d As String In Getir(grup)
+            If Not eklenen.Add(d) Then Continue For
+            Dim n As Long = 0
+            kullanim.TryGetValue(d, n)
+            sonuc.Rows.Add(d, n, True)
+        Next
+        For Each kv As KeyValuePair(Of String, Long) In kullanim
+            If eklenen.Add(kv.Key) Then sonuc.Rows.Add(kv.Key, kv.Value, False)
+        Next
+        Return sonuc
+    End Function
+
+    Public Shared Sub Ekle(grup As String, deger As String)
+        Kolon(grup)
+        Dim d As String = If(deger, "").Trim()
+        If d.Length = 0 Then Throw New InvalidOperationException("Değer boş olamaz.")
+        For Each x As String In Getir(grup)
+            If String.Equals(x.Trim(), d, StringComparison.OrdinalIgnoreCase) Then Throw New InvalidOperationException("'" & d & "' zaten listede var.")
+        Next
+        Dim sira As Object = Db.Skaler("SELECT COALESCE(MAX(Sira), 0) + 1 FROM Liste WHERE Grup = ?", grup)
+        Using c As SQLiteConnection = Db.Ac()
+            Using cmd As SQLiteCommand = Db.Komut(c, Nothing, "INSERT INTO Liste (Grup, Deger, Sira) VALUES (?, ?, ?)", grup, d, Convert.ToInt32(sira))
+                cmd.ExecuteNonQuery()
+            End Using
+        End Using
+    End Sub
+
+    ''' <summary>Değeri yeniden adlandırır; bu değeri kullanan tüm kalıp kayıtları da yeni adla güncellenir. Güncellenen kayıt sayısını döndürür.</summary>
+    Public Shared Function Adlandir(grup As String, eski As String, yeni As String) As Integer
+        Dim k As String = Kolon(grup)
+        Dim e As String = If(eski, "").Trim()
+        Dim y As String = If(yeni, "").Trim()
+        If y.Length = 0 Then Throw New InvalidOperationException("Yeni ad boş olamaz.")
+        If e.Length = 0 Then Throw New InvalidOperationException("Eski ad bulunamadı.")
+        For Each x As String In Getir(grup)
+            If String.Equals(x.Trim(), y, StringComparison.OrdinalIgnoreCase) AndAlso Not String.Equals(x.Trim(), e, StringComparison.OrdinalIgnoreCase) Then
+                Throw New InvalidOperationException("'" & y & "' adı zaten listede var.")
+            End If
+        Next
+        Dim sayi As Integer = 0
+        Using c As SQLiteConnection = Db.Ac()
+            Using tx As SQLiteTransaction = c.BeginTransaction()
+                Dim n As Integer
+                Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE Liste SET Deger = ? WHERE Grup = ? AND Deger = ?", y, grup, e)
+                    n = cmd.ExecuteNonQuery()
+                End Using
+                If n = 0 Then
+                    Dim sira As Integer
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "SELECT COALESCE(MAX(Sira), 0) + 1 FROM Liste WHERE Grup = ?", grup)
+                        sira = Convert.ToInt32(cmd.ExecuteScalar())
+                    End Using
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "INSERT INTO Liste (Grup, Deger, Sira) VALUES (?, ?, ?)", grup, y, sira)
+                        cmd.ExecuteNonQuery()
+                    End Using
+                End If
+                Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE Kalip SET " & k & " = ? WHERE KATLA(TRIM(" & k & ")) = ?", y, TrMetin.Katla(e))
+                    sayi = cmd.ExecuteNonQuery()
+                End Using
+                If grup = GrupKalipTuru Then
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE KalipTanim SET KalipTuru = ? WHERE KATLA(TRIM(COALESCE(KalipTuru, ''))) = ?", y, TrMetin.Katla(e))
+                        sayi += cmd.ExecuteNonQuery()
+                    End Using
+                End If
+                tx.Commit()
+            End Using
+        End Using
+        Return sayi
+    End Function
+
+    ''' <summary>Değeri listeden siler. Kalıp kayıtlarında kullanılan bir değer silinemez (önce adını değiştirin ya da kayıtları güncelleyin).</summary>
+    Public Shared Sub Sil(grup As String, deger As String)
+        Dim d As String = If(deger, "").Trim()
+        For Each r As DataRow In Listele(grup).Rows
+            If String.Equals(Convert.ToString(r("Deger")), d, StringComparison.OrdinalIgnoreCase) AndAlso Convert.ToInt64(r("Kullanim")) > 0 Then
+                Throw New InvalidOperationException("'" & d & "' " & Convert.ToInt64(r("Kullanim")).ToString() & " kalıp kaydında kullanılıyor; silinemez. Önce adını değiştirin.")
+            End If
+        Next
+        Using c As SQLiteConnection = Db.Ac()
+            Using cmd As SQLiteCommand = Db.Komut(c, Nothing, "DELETE FROM Liste WHERE Grup = ? AND Deger = ?", grup, d)
+                cmd.ExecuteNonQuery()
+            End Using
+        End Using
+    End Sub
 End Class
