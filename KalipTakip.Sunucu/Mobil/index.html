@@ -50,6 +50,9 @@ table.tbl{border-collapse:collapse;width:100%;font-size:13px}
 .tbl th{position:sticky;top:0;background:#2a2f66;text-align:left;padding:8px 10px;white-space:nowrap;z-index:1}
 .tbl td{padding:7px 10px;border-top:1px solid var(--kenar);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
 .tbl tr.sec td{background:#2d3478}
+.tbl th{box-shadow:inset -1px 0 0 #6b76d1,inset 0 -1px 0 #6b76d1}
+.tbl td{box-shadow:inset -1px 0 0 rgba(120,130,220,.22)}
+.tbl th.dolgu,.tbl td.dolgu{box-shadow:none}
 @media(pointer:coarse){.tbl tbody tr{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 .tbl tbody tr{cursor:pointer}
 .tbl tbody tr:hover td{background:#252b5c}
@@ -136,7 +139,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='03.11.2026-Z8';
+const SURUM='03.11.2026-Z10';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -739,6 +742,18 @@ SAYFALAR.kt=function(k){
       bilgi.textContent=j.satirlar.length+' kayıt';
     }catch(e){sonuc.innerHTML='';sonuc.append(el('div',{class:'hata'},e.message))}
   }
+  const ktDosya=el('input',{type:'file',accept:'.xlsx,.csv,.txt',style:'display:none',onchange:async()=>{
+    const f=ktDosya.files[0];if(!f)return;
+    const buf=await f.arrayBuffer();let bin='';const bb=new Uint8Array(buf);
+    for(let i=0;i<bb.length;i+=8192)bin+=String.fromCharCode.apply(null,bb.subarray(i,i+8192));
+    ktDosya.value='';
+    try{
+      bildir('Dosya inceleniyor...','t');
+      const o=await api('/api/kt/yukle',{ad:f.name,veri:btoa(bin)});
+      ktYukleOnizle(o,f.name,yenile);
+    }catch(e){bildir(e.message,'h')}
+  }});
+  k.append(ktDosya);
   let zaman;q.oninput=()=>{clearTimeout(zaman);zaman=setTimeout(yenile,350)};
   alan.onchange=lim.onchange=yenile;
   q.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(zaman);yenile()}};
@@ -746,10 +761,34 @@ SAYFALAR.kt=function(k){
     el('div',{class:'arac'},alan,q,kamDugme(q,yenile),lim,bol,
       izin('ekle')&&el('button',{class:'b yesil',onclick:()=>ktForm(null,yenile)},'+ Yeni kayıt'),
       izin('istatistik')&&el('button',{class:'b turuncu',onclick:()=>ktIstatistik(bol.value)},'İstatistik'),
-      izin('excel')&&el('button',{class:'b gri',onclick:()=>indir('/api/kt/excel?'+qs({alan:alan.value,q:q.value,bolum:bol.value}),'kalip_takip.csv')},'Excel\'e aktar')),
+      izin('excel')&&el('button',{class:'b gri',onclick:()=>indir('/api/kt/excel?'+qs({alan:alan.value,q:q.value,bolum:bol.value}),'kalip_takip.csv')},'Excel\'e aktar'),
+      izin('kt_yukle')&&el('button',{class:'b',title:'Excel\'e aktardığınız dosyayı düzenleyip geri yükler (ID sütunu ile eşleşir)',onclick:()=>ktDosya.click()},'Excel / CSV yükle')),
     bilgi,sonuc);
   yenile();
 };
+
+function ktYukleOnizle(o,ad,yenile){
+  const yaz=o.yeni+o.degisen>0;
+  const govde=el('div');
+  govde.append(el('div',{class:'sinir'},ad),
+    el('table',{class:'tbl',style:'margin:8px 0;width:auto'},el('tbody',null,
+      el('tr',null,el('td',null,'Güncellenecek kayıt'),el('td',{style:'text-align:right'},String(o.degisen))),
+      el('tr',null,el('td',null,'Yeni eklenecek kayıt'),el('td',{style:'text-align:right'},String(o.yeni))),
+      el('tr',null,el('td',null,'Değişmemiş (dokunulmaz)'),el('td',{style:'text-align:right'},String(o.ayni))),
+      el('tr',null,el('td',null,'Hatalı satır'),el('td',{style:'text-align:right;color:'+(o.hataSayisi?'#fca5a5':'inherit')},String(o.hataSayisi))))));
+  if(o.ornekler&&o.ornekler.length){govde.append(el('div',{class:'izg'},'Örnek değişiklikler'));o.ornekler.forEach(x=>govde.append(el('div',{class:'sinir'},x)))}
+  if(o.hatalar&&o.hatalar.length){govde.append(el('div',{class:'izg',style:'color:#fca5a5'},'Hatalar'+(o.hataSayisi>o.hatalar.length?' (ilk '+o.hatalar.length+')':'')));o.hatalar.forEach(x=>govde.append(el('div',{class:'hata',style:'margin:2px 0'},x)))}
+  govde.append(el('div',{class:'sinir',style:'margin-top:8px'},'Silme yapılmaz. Parça kodu değiştirilemez. Dosyada olmayan sütunlara dokunulmaz; hücreyi boşaltırsanız o alan boşalır. Hafta ve Toplam Zaman otomatik hesaplanır.'));
+  const msj=el('div');
+  let m;
+  const btn=el('button',{class:'b yesil',disabled:!yaz,onclick:async()=>{
+    btn.disabled=true;msj.textContent='Yazılıyor...';
+    try{const r=await api('/api/kt/yukle/onayla',{jeton:o.jeton,atla:o.hataSayisi?'1':'0'});m.kapat();bildir(r.mesaj,'t');yenile()}
+    catch(e){msj.innerHTML='';msj.append(el('div',{class:'hata'},e.message));btn.disabled=false}
+  }},o.hataSayisi?'Hatalıları atla, kalanını yaz':'Yaz');
+  govde.append(msj,el('div',{class:'arac',style:'margin-top:10px'},btn,el('button',{class:'b gri',onclick:()=>m.kapat()},'Vazgeç')));
+  m=modal('Yükleme önizlemesi',govde,true);
+}
 
 let _sonIslem='';   // girilen işlem tarihi oturum boyunca hatırlanır
 function ktForm(s,yenile){

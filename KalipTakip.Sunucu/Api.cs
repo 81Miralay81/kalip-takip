@@ -103,6 +103,15 @@ namespace KalipTakip.Sunucu
             return liste;
         }
 
+        private class KtYukleme { public string Yol; public string Kullanici; public DateTime Zaman; }
+        private static readonly Dictionary<string, KtYukleme> KtYuklemeler = new Dictionary<string, KtYukleme>();
+
+        // Toplu yükleme bölüm kısıtı taşımaz: yalnızca tüm bölümleri görebilen kullanıcılar kullanabilir.
+        private static void KtYukleKisitla(Kullanici k)
+        {
+            if (GorunurBolumler(k) != null) throw new UnauthorizedAccessException("Toplu yükleme yalnızca tüm bölümleri görebilen kullanıcılar içindir.");
+        }
+
         private static string CsvHucre(object v)
         {
             if (v == null || v == DBNull.Value) return "";
@@ -279,6 +288,55 @@ namespace KalipTakip.Sunucu
                 case "/api/kt/excel":
                     Gerekli(k, Izin.Excel);
                     CsvGonder(ctx, "kalip_takip.csv", KalipSuz(k, KalipRepository.Ara(Q(ctx, "alan"), Q(ctx, "q"), 0, Q(ctx, "bolum")), "ParcaKodu"), KalipRepository.Kolonlar);
+                    return true;
+
+                case "/api/kt/yukle":
+                    Gerekli(k, Izin.KalipYukle);
+                    KtYukleKisitla(k);
+                    {
+                        Dictionary<string, object> g = Govde(ctx);
+                        string ad = Metin(g, "ad");
+                        string uzanti = Path.GetExtension(ad).ToLowerInvariant();
+                        if (uzanti != ".xlsx" && uzanti != ".csv" && uzanti != ".txt") throw new InvalidOperationException("Yalnızca .xlsx veya .csv dosyası yüklenebilir.");
+                        byte[] veri = Convert.FromBase64String(Metin(g, "veri"));
+                        string gecici = Path.Combine(Path.GetTempPath(), "ktkayit_" + Guid.NewGuid().ToString("N") + uzanti);
+                        File.WriteAllBytes(gecici, veri);
+                        KalipRepository.KtYuklemeSonuc o;
+                        try { o = KalipRepository.DosyadanYukle(gecici, k.KullaniciAdi, false, false, k.IzinVar(Izin.Ekle), k.IzinVar(Izin.Guncelle)); }
+                        catch { try { File.Delete(gecici); } catch { } throw; }
+                        string jeton = Guid.NewGuid().ToString("N");
+                        lock (KtYuklemeler)
+                        {
+                            foreach (string eski in KtYuklemeler.Where(x => x.Value.Zaman < DateTime.Now.AddMinutes(-30)).Select(x => x.Key).ToList())
+                            {
+                                try { File.Delete(KtYuklemeler[eski].Yol); } catch { }
+                                KtYuklemeler.Remove(eski);
+                            }
+                            KtYuklemeler[jeton] = new KtYukleme { Yol = gecici, Kullanici = k.KullaniciAdi, Zaman = DateTime.Now };
+                        }
+                        Json(ctx, 200, new { jeton, yeni = o.Yeni, degisen = o.Degisen, ayni = o.Ayni, hataSayisi = o.HataSayisi, hatalar = o.Hatalar, ornekler = o.Ornekler });
+                    }
+                    return true;
+                case "/api/kt/yukle/onayla":
+                    Gerekli(k, Izin.KalipYukle);
+                    KtYukleKisitla(k);
+                    {
+                        Dictionary<string, object> g = Govde(ctx);
+                        string jeton = Metin(g, "jeton");
+                        KtYukleme y;
+                        lock (KtYuklemeler)
+                        {
+                            if (!KtYuklemeler.TryGetValue(jeton, out y) || !string.Equals(y.Kullanici, k.KullaniciAdi, StringComparison.OrdinalIgnoreCase))
+                                throw new InvalidOperationException("Önizleme süresi dolmuş. Dosyayı yeniden seçin.");
+                            KtYuklemeler.Remove(jeton);
+                        }
+                        try
+                        {
+                            KalipRepository.KtYuklemeSonuc o = KalipRepository.DosyadanYukle(y.Yol, k.KullaniciAdi, true, Metin(g, "atla") == "1", k.IzinVar(Izin.Ekle), k.IzinVar(Izin.Guncelle));
+                            Json(ctx, 200, new { mesaj = o.Degisen + " kayıt güncellendi, " + o.Yeni + " yeni kayıt eklendi, " + o.Ayni + " kayıt zaten aynıydı" + (o.HataSayisi > 0 ? "; " + o.HataSayisi + " hatalı satır atlandı." : ".") });
+                        }
+                        finally { try { File.Delete(y.Yol); } catch { } }
+                    }
                     return true;
 
                 // ---- Talep

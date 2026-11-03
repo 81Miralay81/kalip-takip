@@ -2,6 +2,7 @@
 Imports System.Data
 Imports System.Data.SQLite
 Imports System.Globalization
+Imports System.IO
 Imports System.Linq
 Imports System.Text
 
@@ -209,5 +210,295 @@ Public NotInheritable Class KalipRepository
         If kosullar.Count > 0 Then sql.Append(" WHERE ").Append(String.Join(" AND ", kosullar))
         sql.Append(" GROUP BY KalipTuru, Tur")
         Return Db.Tablo(sql.ToString(), p.ToArray())
+    End Function
+
+    ' ---------------------------------------------------------------- TOPLU YÜKLEME (Excel / CSV)
+
+    Public Class KtYuklemeSonuc
+        Public Property Yeni As Integer
+        Public Property Degisen As Integer
+        Public Property Ayni As Integer
+        Public Property HataSayisi As Integer
+        Public ReadOnly Property Hatalar As New List(Of String)()
+        Public ReadOnly Property Ornekler As New List(Of String)()
+    End Class
+
+    Private Shared Function YNorm(s As String) As String
+        Dim k As String = TrMetin.Katla(If(s, "").Trim())
+        Return New String(k.Where(Function(ch) Char.IsLetterOrDigit(ch)).ToArray())
+    End Function
+
+    Private Shared ReadOnly TarihBicimleri As String() = {
+        "dd.MM.yyyy HH:mm", "dd.MM.yyyy", "d.M.yyyy", "d.M.yyyy HH:mm", "dd.MM.yyyy HH:mm:ss", "d.M.yyyy HH:mm:ss",
+        "yyyy-MM-dd", "yyyy-MM-dd HH:mm", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-ddTHH:mm:ss", "dd/MM/yyyy", "d/M/yyyy"
+    }
+
+    Private Shared Function YTarih(v As String, ByRef hata As Boolean) As Date?
+        If String.IsNullOrWhiteSpace(v) Then Return Nothing
+        Dim t As String = v.Trim()
+        ' Excel (.xlsx) tarihleri seri numarası olarak gelir (örn. 45123 ya da 45123.5)
+        If System.Text.RegularExpressions.Regex.IsMatch(t, "^\d{5}(\.\d+)?$") Then
+            Dim n As Double = Double.Parse(t, NumberStyles.Float, Kultur.Inv)
+            Return Date.FromOADate(Math.Round(n * 1440) / 1440)
+        End If
+        Dim d As Date
+        If Date.TryParseExact(t, TarihBicimleri, Kultur.Inv, DateTimeStyles.None, d) Then Return d
+        hata = True
+        Return Nothing
+    End Function
+
+    Private Shared Function YSayi(v As String, ByRef hata As Boolean) As Double?
+        If String.IsNullOrWhiteSpace(v) Then Return Nothing
+        Dim t As String = v.Trim().Replace(" ", "")
+        If t.Contains(",") AndAlso t.Contains(".") Then
+            t = t.Replace(".", "").Replace(",", ".")
+        ElseIf t.Contains(",") Then
+            t = t.Replace(",", ".")
+        End If
+        Dim n As Double
+        If Double.TryParse(t, NumberStyles.Float, Kultur.Inv, n) Then Return n
+        hata = True
+        Return Nothing
+    End Function
+
+    Private Shared Function YTam(v As String, ByRef hata As Boolean) As Integer?
+        Dim x As Double? = YSayi(v, hata)
+        If Not x.HasValue Then Return Nothing
+        If Math.Abs(x.Value - Math.Round(x.Value)) > 0.000001 Then
+            hata = True
+            Return Nothing
+        End If
+        Return CInt(Math.Round(x.Value))
+    End Function
+
+    Private Shared Function YMetin(v As String) As String
+        If String.IsNullOrWhiteSpace(v) Then Return Nothing
+        Return v.Trim()
+    End Function
+
+    Private Shared Function YS(x As Double?) As String
+        If Not x.HasValue Then Return ""
+        Return Math.Round(x.Value, 6).ToString("0.######", Kultur.Inv)
+    End Function
+
+    Private Shared Function YT(x As Date?) As String
+        If Not x.HasValue Then Return ""
+        Return x.Value.ToString("yyyy-MM-dd HH:mm", Kultur.Inv)
+    End Function
+
+    Private Shared Function YI(x As Integer?) As String
+        If Not x.HasValue Then Return ""
+        Return x.Value.ToString(Kultur.Inv)
+    End Function
+
+    ''' <summary>Karşılaştırma için kullanıcının girdiği alanların metin özeti (Hafta/ToplamZaman hesaplanan alanlardır, dahil değil).</summary>
+    Private Shared Function Imza(k As Kalip) As Dictionary(Of String, String)
+        Dim d As New Dictionary(Of String, String)()
+        d("ParcaKodu") = If(k.ParcaKodu, "").Trim()
+        d("KalipTuru") = If(k.KalipTuru, "").Trim()
+        d("TepeKodu") = If(k.TepeKodu, "").Trim()
+        d("ParcaAdi") = If(k.ParcaAdi, "").Trim()
+        d("GelisTarihi") = YT(k.GelisTarihi)
+        d("TashihSayi") = YI(k.TashihSayi)
+        d("BitisTarihi") = YT(k.BitisTarihi)
+        d("Tur") = If(k.Tur, "").Trim()
+        d("DovmeAdeti") = YS(k.DovmeAdeti)
+        d("CncNo") = YI(k.CncNo)
+        d("Aciklama") = If(k.Aciklama, "").Trim()
+        d("IslemSuresi") = YS(k.IslemSuresi)
+        d("Ayar") = YS(k.Ayar)
+        d("Bakim") = YS(k.Bakim)
+        d("ElemanEksikligi") = YS(k.ElemanEksikligi)
+        d("Elektrik") = YS(k.Elektrik)
+        d("KalipAriza") = YS(k.KalipAriza)
+        d("Takim") = YS(k.Takim)
+        d("Ariza") = YS(k.Ariza)
+        Return d
+    End Function
+
+    Private Shared Sub YAta(k As Kalip, alan As String, v As String, ByRef hata As Boolean)
+        Select Case alan
+            Case "ParcaKodu" : k.ParcaKodu = YMetin(v)
+            Case "KalipTuru" : k.KalipTuru = YMetin(v)
+            Case "TepeKodu" : k.TepeKodu = YMetin(v)
+            Case "ParcaAdi" : k.ParcaAdi = YMetin(v)
+            Case "GelisTarihi" : k.GelisTarihi = YTarih(v, hata)
+            Case "TashihSayi" : k.TashihSayi = YTam(v, hata)
+            Case "BitisTarihi" : k.BitisTarihi = YTarih(v, hata)
+            Case "Tur" : k.Tur = YMetin(v)
+            Case "DovmeAdeti" : k.DovmeAdeti = YSayi(v, hata)
+            Case "CncNo" : k.CncNo = YTam(v, hata)
+            Case "Aciklama" : k.Aciklama = YMetin(v)
+            Case "IslemSuresi" : k.IslemSuresi = YSayi(v, hata)
+            Case "Ayar" : k.Ayar = YSayi(v, hata)
+            Case "Bakim" : k.Bakim = YSayi(v, hata)
+            Case "ElemanEksikligi" : k.ElemanEksikligi = YSayi(v, hata)
+            Case "Elektrik" : k.Elektrik = YSayi(v, hata)
+            Case "KalipAriza" : k.KalipAriza = YSayi(v, hata)
+            Case "Takim" : k.Takim = YSayi(v, hata)
+            Case "Ariza" : k.Ariza = YSayi(v, hata)
+        End Select
+    End Sub
+
+    ''' <summary>Toplam zaman ve hafta, kayıt formundaki (sunucu) kuralla aynı şekilde yeniden hesaplanır.</summary>
+    Private Shared Sub YHesapla(k As Kalip)
+        Dim t As Double? = Nothing
+        For Each d As Double? In New Double?() {k.IslemSuresi, k.Ayar, k.Bakim, k.ElemanEksikligi, k.Elektrik, k.KalipAriza, k.Takim, k.Ariza}
+            If d.HasValue Then t = If(t.HasValue, t.Value, 0.0) + d.Value
+        Next
+        If t.HasValue Then
+            k.ToplamZaman = Math.Round(t.Value, 2, MidpointRounding.AwayFromZero)
+        Else
+            k.ToplamZaman = Nothing
+        End If
+        k.Hafta = TarihYardimci.HaftaHesapla(k.BitisTarihi)
+    End Sub
+
+    Private Shared Sub YHata(s As KtYuklemeSonuc, mesaj As String)
+        s.HataSayisi += 1
+        If s.Hatalar.Count < 40 Then s.Hatalar.Add(mesaj)
+    End Sub
+
+    Private Shared Function KolonAdi(alan As String) As String
+        Dim kd As KolonTanimi = Kolonlar.FirstOrDefault(Function(x) x.Alan = alan)
+        Return If(kd Is Nothing, alan, kd.Baslik)
+    End Function
+
+    ''' <summary>
+    ''' Kalıp Takip'ten dışa aktarılan Excel/CSV'yi geri yükler. 'ID' sütunu zorunludur:
+    ''' dolu ID = o kayıt güncellenir (yalnızca dosyada bulunan sütunlar, yalnızca değişenler yazılır);
+    ''' boş ID = yeni kayıt. Silme yapılmaz; parça kodu değiştirilemez. uygula=False ise hiçbir şey yazılmaz (önizleme).
+    ''' </summary>
+    Public Shared Function DosyadanYukle(yol As String, kullanici As String, uygula As Boolean, hatalilariAtla As Boolean, yeniIzni As Boolean, guncelleIzni As Boolean) As KtYuklemeSonuc
+        Dim csv As Boolean = yol.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) OrElse yol.EndsWith(".txt", StringComparison.OrdinalIgnoreCase)
+        Dim ham As List(Of List(Of String)) = If(csv, KalipListeRepository.CsvOku(yol), KalipListeRepository.ExcelOku(yol))
+        If ham.Count < 2 Then Throw New InvalidDataException("Dosyada başlık satırı ve en az bir kayıt satırı olmalı.")
+        Dim baslik As List(Of String) = ham(0).Select(Function(h) YNorm(h)).ToList()
+        Dim iId As Integer = baslik.IndexOf("id")
+        If iId < 0 Then Throw New InvalidDataException("'ID' sütunu bulunamadı. Önce Kalıp Takip'ten 'Excel'e aktar' ile dosyayı indirin, onu düzenleyip yükleyin; ID sütununu silmeyin.")
+        Dim kolonlar As New List(Of KeyValuePair(Of KolonTanimi, Integer))()
+        For Each kd As KolonTanimi In Kolonlar
+            If kd.Alan = "Id" OrElse kd.Alan = "Hafta" OrElse kd.Alan = "ToplamZaman" Then Continue For
+            Dim kdYerel As KolonTanimi = kd
+            Dim idx As Integer = baslik.FindIndex(Function(h) h = YNorm(kdYerel.Baslik) OrElse h = YNorm(kdYerel.Alan))
+            If idx >= 0 Then kolonlar.Add(New KeyValuePair(Of KolonTanimi, Integer)(kd, idx))
+        Next
+        If Not kolonlar.Any(Function(x) x.Key.Alan = "ParcaKodu") Then Throw New InvalidDataException("'Parça Kodu' sütunu bulunamadı.")
+
+        Dim mevcut As New Dictionary(Of Integer, DataRow)()
+        For Each r As DataRow In Db.Tablo("SELECT " & SecimListesi & " FROM Kalip").Rows
+            mevcut(Convert.ToInt32(r("Id"))) = r
+        Next
+
+        Dim sonuc As New KtYuklemeSonuc()
+        Dim gorulen As New HashSet(Of Integer)()
+        Dim guncellenecek As New List(Of Kalip)()
+        Dim eklenecek As New List(Of Kalip)()
+        For i As Integer = 1 To ham.Count - 1
+            Dim satir As List(Of String) = ham(i)
+            Dim sno As String = (i + 1).ToString(Kultur.Inv) & ". satır: "
+            Dim idMetin As String = If(iId < satir.Count, satir(iId), "").Trim()
+            Dim k As Kalip
+            Dim eskiK As Kalip = Nothing
+            Dim id As Integer = 0
+            If idMetin.Length > 0 Then
+                If Not Integer.TryParse(idMetin, NumberStyles.Integer, Kultur.Inv, id) OrElse id <= 0 Then
+                    YHata(sonuc, sno & "ID '" & idMetin & "' geçersiz.")
+                    Continue For
+                End If
+                If Not mevcut.ContainsKey(id) Then
+                    YHata(sonuc, sno & "ID " & id.ToString(Kultur.Inv) & " veritabanında yok (silinmiş olabilir). Yeni kayıt için ID hücresini boş bırakın.")
+                    Continue For
+                End If
+                If Not gorulen.Add(id) Then
+                    YHata(sonuc, sno & "ID " & id.ToString(Kultur.Inv) & " dosyada birden çok kez geçiyor.")
+                    Continue For
+                End If
+                If Not guncelleIzni Then
+                    YHata(sonuc, sno & "Kayıt güncelleme yetkiniz yok.")
+                    Continue For
+                End If
+                eskiK = Kalip.SatirdanOku(mevcut(id))
+                k = Kalip.SatirdanOku(mevcut(id))
+            Else
+                If Not yeniIzni Then
+                    YHata(sonuc, sno & "Yeni kayıt ekleme yetkiniz yok.")
+                    Continue For
+                End If
+                k = New Kalip()
+            End If
+            Dim hatali As Boolean = False
+            For Each kv As KeyValuePair(Of KolonTanimi, Integer) In kolonlar
+                Dim v As String = If(kv.Value < satir.Count, satir(kv.Value), "")
+                Dim h As Boolean = False
+                YAta(k, kv.Key.Alan, v, h)
+                If h Then
+                    YHata(sonuc, sno & kv.Key.Baslik & " '" & v & "' anlaşılamadı.")
+                    hatali = True
+                    Exit For
+                End If
+            Next
+            If hatali Then Continue For
+            If String.IsNullOrWhiteSpace(k.ParcaKodu) Then
+                YHata(sonuc, sno & "Parça kodu boş olamaz.")
+                Continue For
+            End If
+            If eskiK IsNot Nothing Then
+                If TrMetin.Katla(If(eskiK.ParcaKodu, "").Trim()) <> TrMetin.Katla(k.ParcaKodu.Trim()) Then
+                    YHata(sonuc, sno & "ID " & id.ToString(Kultur.Inv) & ": parça kodu burada değiştirilemez (" & eskiK.ParcaKodu & " → " & k.ParcaKodu & "). Kalıp Listesi'ndeki 'Kodu düzelt' kullanın.")
+                    Continue For
+                End If
+                Dim eski As Dictionary(Of String, String) = Imza(eskiK)
+                Dim yeniImza As Dictionary(Of String, String) = Imza(k)
+                Dim farklar As New List(Of String)()
+                For Each kv2 As KeyValuePair(Of String, String) In eski
+                    If yeniImza(kv2.Key) <> kv2.Value Then farklar.Add(KolonAdi(kv2.Key) & ": '" & kv2.Value & "' → '" & yeniImza(kv2.Key) & "'")
+                Next
+                If farklar.Count = 0 Then
+                    sonuc.Ayni += 1
+                Else
+                    sonuc.Degisen += 1
+                    YHesapla(k)
+                    guncellenecek.Add(k)
+                    If sonuc.Ornekler.Count < 8 Then sonuc.Ornekler.Add("#" & id.ToString(Kultur.Inv) & " " & k.ParcaKodu & " — " & String.Join("; ", farklar.Take(3)) & If(farklar.Count > 3, " (+" & (farklar.Count - 3).ToString(Kultur.Inv) & " alan)", ""))
+                End If
+            Else
+                YHesapla(k)
+                eklenecek.Add(k)
+                sonuc.Yeni += 1
+                If sonuc.Ornekler.Count < 8 Then sonuc.Ornekler.Add("YENİ " & k.ParcaKodu & If(String.IsNullOrEmpty(k.KalipTuru), "", " — " & k.KalipTuru))
+            End If
+        Next
+
+        If Not uygula Then Return sonuc
+        If sonuc.HataSayisi > 0 AndAlso Not hatalilariAtla Then Throw New InvalidOperationException("Dosyada " & sonuc.HataSayisi.ToString(Kultur.Inv) & " hatalı satır var; hatalı satırlar atlanarak yazılması onaylanmalı.")
+        Dim alanlar As String = String.Join(",", YazilanAlanlar) & ",Surum,SonDegisiklik,SonKullanici"
+        Dim yerTutucu As String = String.Join(",", Enumerable.Repeat("?", YazilanAlanlar.Length + 3))
+        Dim atamalar As String = String.Join(",", YazilanAlanlar.Select(Function(a) a & "=?")) & ",Surum=?,SonDegisiklik=?,SonKullanici=?"
+        Using c As SQLiteConnection = Db.Ac()
+            Using tx As SQLiteTransaction = c.BeginTransaction()
+                For Each k As Kalip In guncellenecek
+                    Dim p As List(Of Object) = Degerler(k)
+                    p.Add(Db.Prm(DbType.Int32, k.Surum + 1))
+                    p.Add(Db.Prm(DbType.DateTime, Date.Now))
+                    p.Add(Db.Prm(DbType.String, Bos(kullanici)))
+                    p.Add(Db.Prm(DbType.Int32, k.Id))
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE Kalip SET " & atamalar & " WHERE Id=?", p.ToArray())
+                        cmd.ExecuteNonQuery()
+                    End Using
+                Next
+                For Each k As Kalip In eklenecek
+                    Dim p As List(Of Object) = Degerler(k)
+                    p.Add(Db.Prm(DbType.Int32, 1))
+                    p.Add(Db.Prm(DbType.DateTime, Date.Now))
+                    p.Add(Db.Prm(DbType.String, Bos(kullanici)))
+                    Using cmd As SQLiteCommand = Db.Komut(c, tx, "INSERT INTO Kalip (" & alanlar & ") VALUES (" & yerTutucu & ")", p.ToArray())
+                        cmd.ExecuteNonQuery()
+                    End Using
+                Next
+                tx.Commit()
+            End Using
+        End Using
+        Return sonuc
     End Function
 End Class

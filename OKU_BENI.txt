@@ -52,3 +52,5 @@ SÜRÜM Z5-Z6 (03.11.2026)
 Sürüm Z7: Kullanıcı formunda Bölümler, Bildirim ve her yetki grubu açılır pencere (başlıkta seçili/toplam sayısı); varsayılan kapalı.
 
 Sürüm Z8: Kritik uyarıdan "Geri al" yapılınca açık kullanıcı formundaki kutu da anında kalkar.
+
+Sürüm Z9-Z10: Tüm tablolarda sütun ayırıcı çizgiler. Kalıp Takip: Excel/CSV yükleme (kt_yukle, KRİTİK): ID ile eşleşir, önizleme + onay, silme yok, parça kodu değişmez, Hafta/Toplam Zaman otomatik.

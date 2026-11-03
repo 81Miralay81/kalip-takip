@@ -474,7 +474,7 @@ Public NotInheritable Class KalipListeRepository
         Return v.Trim()
     End Function
 
-    Private Shared Function CsvOku(yol As String) As List(Of List(Of String))
+    Friend Shared Function CsvOku(yol As String) As List(Of List(Of String))
         Dim sonuc As New List(Of List(Of String))()
         Dim metin As String = File.ReadAllText(yol, Encoding.UTF8)
         If metin.Length > 0 AndAlso metin(0) = ChrW(&HFEFF) Then metin = metin.Substring(1)
@@ -535,7 +535,7 @@ Public NotInheritable Class KalipListeRepository
         Return sonuc
     End Function
 
-    Private Shared Function ExcelOku(yol As String) As List(Of List(Of String))
+    Friend Shared Function ExcelOku(yol As String) As List(Of List(Of String))
         Dim sonuc As New List(Of List(Of String))()
         Using x As New XlsxOkuyucu(yol)
             Dim sayfa As String = x.IlkSayfa()

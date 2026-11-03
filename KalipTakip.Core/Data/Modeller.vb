@@ -170,6 +170,7 @@ Public NotInheritable Class Izin
     Public Const Excel As String = "excel"
     Public Const Tashih As String = "tashih"
     Public Const Istatistik As String = "istatistik"
+    Public Const KalipYukle As String = "kt_yukle"          ' Excel / CSV'den toplu kayıt yükleme ve düzeltme (KRİTİK)
 
     Public Const TalepGor As String = "talep_gor"         ' Talep portalını açabilir / sorgu yapabilir
     Public Const TalepEkle As String = "talep_ekle"       ' Yeni talep açabilir
@@ -199,6 +200,7 @@ Public NotInheritable Class Izin
         New IzinTanimi(GrupKalip, Sil, "⚠ KRİTİK: Kalıp Takip kaydı silme"),
         New IzinTanimi(GrupKalip, Tashih, "Güncelle + Tashih kaydı / Temizle"),
         New IzinTanimi(GrupKalip, Excel, "Excel'e aktarma"),
+        New IzinTanimi(GrupKalip, KalipYukle, "⚠ KRİTİK: Excel / CSV'den toplu kayıt yükleme (düzeltme)"),
         New IzinTanimi(GrupKalip, Istatistik, "İstatistik raporu"),
         New IzinTanimi(GrupTalep, TalepGor, "Portalı açabilir / talepleri görüp sorgulayabilir", True),
         New IzinTanimi(GrupTalep, TalepEkle, "Yeni talep açma"),
@@ -219,7 +221,7 @@ Public NotInheritable Class Izin
     }
 
     ''' <summary>Kritik yetkiler: yönetici her girişte bu yetkileri taşıyan kullanıcılar için uyarılır.</summary>
-    Public Shared ReadOnly Kritik As HashSet(Of String) = New HashSet(Of String)(New String() {Sil, TalepSil, KalipListeDuzenle, KalipListeYukle, KalipListeSil}, StringComparer.OrdinalIgnoreCase)
+    Public Shared ReadOnly Kritik As HashSet(Of String) = New HashSet(Of String)(New String() {Sil, TalepSil, KalipYukle, KalipListeDuzenle, KalipListeYukle, KalipListeSil}, StringComparer.OrdinalIgnoreCase)
 
     ''' <summary>Eski kullanım için (anahtar, ad) çiftleri.</summary>
     Public Shared ReadOnly Liste As KeyValuePair(Of String, String)() =
