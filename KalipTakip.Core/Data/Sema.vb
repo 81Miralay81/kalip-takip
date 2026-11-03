@@ -259,6 +259,15 @@ Public NotInheritable Class Sema
                 })
                 degisti = True
             End If
+            ' Sürüm 9: kalıp düzenleme ve toplu yükleme ayrı yetki oldu; kalıp ekleme yetkisi olanlara bir kez otomatik verilir (silme verilmez).
+            If AyarRepository.Al("mig_kl_yetki", "") <> "1" Then
+                Calistir(c, New String() {
+                    "INSERT OR IGNORE INTO Yetki (KullaniciId, Anahtar) SELECT KullaniciId, 'kl_duzenle' FROM Yetki WHERE Anahtar = 'kl_ekle'",
+                    "INSERT OR IGNORE INTO Yetki (KullaniciId, Anahtar) SELECT KullaniciId, 'kl_yukle' FROM Yetki WHERE Anahtar = 'kl_ekle'",
+                    "INSERT OR REPLACE INTO Ayar (Anahtar, Deger) VALUES ('mig_kl_yetki', '1')"
+                })
+                degisti = True
+            End If
             Return degisti
         End Using
     End Function

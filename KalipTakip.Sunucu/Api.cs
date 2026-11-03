@@ -335,11 +335,12 @@ namespace KalipTakip.Sunucu
 
                 // ---- Kalıp Listesi
                 case "/api/kl/kaydet":
-                    Gerekli(k, Izin.KalipListeEkle);
                     {
                         Dictionary<string, object> g = Govde(ctx);
                         string kod = Metin(g, "kod");
                         if (kod.Length == 0) throw new InvalidOperationException("Kalıp kodu boş olamaz.");
+                        // var olan kalıbı değiştirmek ayrı (kritik) yetkidir; istemcinin gönderdiği "duzenle" bayrağına güvenilmez
+                        Gerekli(k, KalipListeRepository.KalipVarMi(kod) ? Izin.KalipListeDuzenle : Izin.KalipListeEkle);
                         KalipGorunurGerekli(k, kod);
                         KalipListeRepository.Kaydet(kod, Metin(g, "ad"), Metin(g, "tur"), Metin(g, "tepe"), Metin(g, "notlar"),
                             Metin(g, "lokasyon"), Metin(g, "sahip"), Metin(g, "raf"), k.KullaniciAdi, GBool(g, "duzenle"));
@@ -347,7 +348,7 @@ namespace KalipTakip.Sunucu
                     }
                     return true;
                 case "/api/kl/yukle":
-                    Gerekli(k, Izin.KalipListeEkle);
+                    Gerekli(k, Izin.KalipListeYukle);
                     {
                         Dictionary<string, object> g = Govde(ctx);
                         string ad = Metin(g, "ad");
@@ -419,14 +420,14 @@ namespace KalipTakip.Sunucu
                     }
                     return true;
                 case "/api/kl/sil":
-                    YoneticiGerekli(k);
+                    Gerekli(k, Izin.KalipListeSil);
                     {
                         Dictionary<string, object> g = Govde(ctx);
                         Json(ctx, 200, new { mesaj = KalipListeRepository.KalipSil(Metin(g, "kod"), GBool(g, "zorla")) });
                     }
                     return true;
                 case "/api/kl/temizsil":
-                    YoneticiGerekli(k);
+                    Gerekli(k, Izin.KalipListeSil);
                     {
                         List<string> kodlar = GListe(Govde(ctx), "kodlar").Select(o => Convert.ToString(o)).ToList();
                         int atlanan = 0;
@@ -534,6 +535,32 @@ namespace KalipTakip.Sunucu
                     }
                     return true;
                 case "/api/kul/kaydet": KullaniciKaydet(k, ctx); return true;
+                case "/api/kritik":
+                    YoneticiGerekli(k);
+                    {
+                        List<object> liste = new List<object>();
+                        foreach (DataRow r in KullaniciRepository.Listele().Rows)
+                        {
+                            Kullanici h = KullaniciRepository.Getir(Convert.ToInt32(r["Id"]));
+                            if (h == null || h.IsAdmin || !h.Aktif) continue;
+                            var kr = Izin.Tanimlar.Where(t => Izin.Kritik.Contains(t.Anahtar) && h.Izinler.Contains(t.Anahtar)).Select(t => new { anahtar = t.Anahtar, ad = t.Ad }).ToList();
+                            if (kr.Count > 0) liste.Add(new { id = h.Id, ad = h.KullaniciAdi, izinler = kr });
+                        }
+                        Json(ctx, 200, new { kullanicilar = liste });
+                    }
+                    return true;
+                case "/api/kritik/geri":
+                    YoneticiGerekli(k);
+                    {
+                        Dictionary<string, object> g = Govde(ctx);
+                        int id = int.Parse(Metin(g, "id"), Inv);
+                        string anahtar = Metin(g, "anahtar");
+                        if (!Izin.Kritik.Contains(anahtar)) throw new InvalidOperationException("Bu yetki kritik yetki listesinde değil.");
+                        KullaniciRepository.IzinKaldir(id, anahtar);
+                        OturumYenile(id);
+                        Json(ctx, 200, new { mesaj = "Yetki geri alındı." });
+                    }
+                    return true;
                 case "/api/kul/sil":
                     YoneticiGerekli(k);
                     {

@@ -136,6 +136,13 @@ Public NotInheritable Class KalipListeRepository
         End Select
     End Function
 
+    ''' <summary>Kalıp koduna ait herhangi bir kayıt (tanım, lokasyon, talep, Kalıp Takip) var mı? Yeni kalıp mı, düzenleme mi ayrımı için.</summary>
+    Public Shared Function KalipVarMi(kod As String) As Boolean
+        Dim a As String = TrMetin.Katla(If(kod, "").Trim())
+        Dim n As Object = Db.Skaler("SELECT (SELECT COUNT(*) FROM KalipTanim WHERE Anahtar = ?) + (SELECT COUNT(*) FROM KalipLokasyon WHERE Anahtar = ?) + (SELECT COUNT(*) FROM TalepKalip WHERE Anahtar = ?) + (SELECT COUNT(*) FROM Kalip WHERE KATLA(ParcaKodu) = ?)", a, a, a, a)
+        Return Convert.ToInt64(n) > 0
+    End Function
+
     ''' <summary>Eski hatalı yüklemelerden kalan verileri onarır: lokasyon listesinde olmayan lokasyonları boşaltır, bozuk kalıp türü adlarını (sayı ve iki tırnak ile yazılmış olanları) "1" DÖVME KALIBI biçimine çevirir. uygula=False ise yalnız sayar. Döner: lokasyon sayısı|tür sayısı</summary>
     Public Shared Function VeriOnar(uygula As Boolean) As String
         Dim lokSay As Long = 0

@@ -186,6 +186,9 @@ Public NotInheritable Class Izin
     Public Const KalipListeGor As String = "kl_gor"         ' Kalıp Listesi portalını açabilir / sorgulayabilir
     Public Const KalipListeEkle As String = "kl_ekle"       ' Kalıp ekleme / düzenleme / Excel'den yükleme
     Public Const KalipListeExcel As String = "kl_excel"
+    Public Const KalipListeDuzenle As String = "kl_duzenle"  ' Var olan kalıbın bilgilerini düzenleme (KRİTİK)
+    Public Const KalipListeYukle As String = "kl_yukle"      ' Excel / CSV'den toplu kalıp yükleme (KRİTİK)
+    Public Const KalipListeSil As String = "kl_sil"          ' Kalıbı listeden silme, toplu temizlik (KRİTİK)
     Public Const GrupKalipListe As String = "Kalıp Listesi"
     Public Const GrupTalep As String = "Talep"
 
@@ -193,14 +196,14 @@ Public NotInheritable Class Izin
         New IzinTanimi(GrupKalip, KalipGor, "Portalı açabilir / kayıtları görüp sorgulayabilir", True),
         New IzinTanimi(GrupKalip, Ekle, "Yeni kayıt ekleme"),
         New IzinTanimi(GrupKalip, Guncelle, "Kayıt güncelleme"),
-        New IzinTanimi(GrupKalip, Sil, "Kayıt silme"),
+        New IzinTanimi(GrupKalip, Sil, "⚠ KRİTİK: Kalıp Takip kaydı silme"),
         New IzinTanimi(GrupKalip, Tashih, "Güncelle + Tashih kaydı / Temizle"),
         New IzinTanimi(GrupKalip, Excel, "Excel'e aktarma"),
         New IzinTanimi(GrupKalip, Istatistik, "İstatistik raporu"),
         New IzinTanimi(GrupTalep, TalepGor, "Portalı açabilir / talepleri görüp sorgulayabilir", True),
         New IzinTanimi(GrupTalep, TalepEkle, "Yeni talep açma"),
         New IzinTanimi(GrupTalep, TalepGuncelle, "Talep güncelleme (statü, sonuç...)"),
-        New IzinTanimi(GrupTalep, TalepSil, "Talep silme"),
+        New IzinTanimi(GrupTalep, TalepSil, "⚠ KRİTİK: Talep silme"),
         New IzinTanimi(GrupTalep, TalepListe, "'Talepler' (tüm liste) sayfasını görme"),
         New IzinTanimi(GrupTalep, TalepExcel, "Talep listesini Excel'e aktarma"),
         New IzinTanimi(GrupTalep, TalepKalipDurum, "Kalıp statüsü ve lokasyonunu değiştirme (kalıphane / grup lideri)"),
@@ -208,9 +211,15 @@ Public NotInheritable Class Izin
         New IzinTanimi(GrupTalep, TalepTeslim, "Gelen talebi teslim alma; gelmeyen kalıpları geri bildirme"),
         New IzinTanimi(GrupTalep, RafKaldir, "Teslim alınan kalıbı rafa kaldırma (raf girme)"),
         New IzinTanimi(GrupKalipListe, KalipListeGor, "Portalı açabilir / kalıpları ve geçmişini görüp sorgulayabilir", True),
-        New IzinTanimi(GrupKalipListe, KalipListeEkle, "Kalıp ekleme / düzenleme / Excel'den yükleme"),
+        New IzinTanimi(GrupKalipListe, KalipListeEkle, "Yeni kalıp ekleme; raf, bölüm ataması ve hızlı işlem"),
+        New IzinTanimi(GrupKalipListe, KalipListeDuzenle, "⚠ KRİTİK: Var olan kalıbı düzenleme"),
+        New IzinTanimi(GrupKalipListe, KalipListeYukle, "⚠ KRİTİK: Excel / CSV'den toplu kalıp yükleme"),
+        New IzinTanimi(GrupKalipListe, KalipListeSil, "⚠ KRİTİK: Kalıp silme (tek tek ve toplu temizlik)"),
         New IzinTanimi(GrupKalipListe, KalipListeExcel, "Kalıp listesini Excel'e aktarma")
     }
+
+    ''' <summary>Kritik yetkiler: yönetici her girişte bu yetkileri taşıyan kullanıcılar için uyarılır.</summary>
+    Public Shared ReadOnly Kritik As HashSet(Of String) = New HashSet(Of String)(New String() {Sil, TalepSil, KalipListeDuzenle, KalipListeYukle, KalipListeSil}, StringComparer.OrdinalIgnoreCase)
 
     ''' <summary>Eski kullanım için (anahtar, ad) çiftleri.</summary>
     Public Shared ReadOnly Liste As KeyValuePair(Of String, String)() =

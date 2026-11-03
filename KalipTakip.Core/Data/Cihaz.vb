@@ -29,7 +29,7 @@ Public NotInheritable Class CihazRepository
     Public Const Reddedildi As String = "Reddedildi"
 
     Public Shared Function KontrolAcik() As Boolean
-        Return AyarRepository.Al(AyarKontrol, "0") = "1"
+        Return AyarRepository.Al(AyarKontrol, "1") = "1"
     End Function
 
     Public Shared Sub KontrolYaz(acik As Boolean)

@@ -39,3 +39,12 @@ SÜRÜM Z4 (03.11.2026)
 - Uygun olmayan işlemler pasif (soluk) görünür ve kısayolla da çalışmaz: liste boşken "Kaydı olmayanları sil", kalıp seçilmeden "Seçilenlere ata", gönderilmiş açık talepte "Sil".
 - Talep: "Talep Aç" yalnız talep_ekle, "Güncelle" yalnız talep_guncelle, "Sil" yalnız talep_sil yetkisi olanlara görünür.
 - Sayfa adresi elle yazılsa bile yetkisiz sayfa açılmaz ("Bu sayfayı açma yetkiniz yok.").
+
+SÜRÜM Z5-Z6 (03.11.2026)
+- Telefon: parmağı ~0,5 sn basılı tutmak sağ tık gibi menü açar. Talep kalıp tablosunda uzun basma kalıbı seçer ve "seçim modu"na alır; sonra dokundukça seçer/seçimi kaldırır, seçim boşalınca mod biter. İşlemler için "☰ İşlemler".
+- Yeni ayrı yetkiler (Kullanıcılar sayfasında "⚠ KRİTİK" işaretli): kl_duzenle (var olan kalıbı düzenleme), kl_yukle (Excel/CSV yükleme), kl_sil (kalıp silme + toplu temizlik).
+  kl_ekle artık yalnız yeni kalıp, raf, bölüm ataması ve hızlı işlem. Kalıp kodu düzeltme ve Verileri onar yalnız yönetici.
+  Güncellemede kl_ekle yetkisi olanlara kl_duzenle ve kl_yukle BİR KEZ otomatik verilir (kl_sil verilmez).
+  Sunucu, kalıp var olan bir kodla "yeni kalıp" gönderilse bile düzenleme yetkisi ister.
+- Kritik yetkiler: sil (Kalıp Takip kaydı), talep_sil, kl_duzenle, kl_yukle, kl_sil. Yönetici her girişte bu yetkileri taşıyan kullanıcıların listesini görür; her yetki için "Kalsın" ya da "Geri al" (anında kaldırır, açık oturuma da işler).
+- Cihaz kontrolü artık varsayılan AÇIK (ayar hiç yazılmamışsa). Daha önce giriş yapmış cihazlar zaten "Onaylı" kayıtlıdır.

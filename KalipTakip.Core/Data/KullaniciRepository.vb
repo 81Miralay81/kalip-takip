@@ -78,6 +78,11 @@ Public NotInheritable Class KullaniciRepository
         Return Db.Tablo("SELECT Id, KullaniciAdi, IsAdmin, Aktif FROM Kullanici ORDER BY KullaniciAdi")
     End Function
 
+    ''' <summary>Kullanıcının tek bir yetkisini kaldırır.</summary>
+    Public Shared Sub IzinKaldir(id As Integer, anahtar As String)
+        Db.Calistir("DELETE FROM Yetki WHERE KullaniciId = ? AND Anahtar = ?", id, anahtar)
+    End Sub
+
     ''' <summary>Aktif yönetici sayısı (son yöneticinin silinmesini/pasifleştirilmesini engellemek için).</summary>
     Public Shared Function AktifYoneticiSayisi() As Integer
         Return Convert.ToInt32(Db.Skaler("SELECT COUNT(*) FROM Kullanici WHERE IsAdmin = ? AND Aktif = ?", True, True))

@@ -294,6 +294,20 @@ namespace KalipTakip.Sunucu
             }
         }
 
+        // Yetki değişince açık oturumlardaki kullanıcı bilgisi yenilenir (yeniden girişi beklemeden geçerli olur).
+        private static void OturumYenile(int kullaniciId)
+        {
+            lock (Kilit)
+            {
+                foreach (Oturum o in Oturumlar.Values)
+                {
+                    if (o.Kullanici == null || o.Kullanici.Id != kullaniciId) continue;
+                    Kullanici y = KullaniciRepository.Getir(kullaniciId);
+                    if (y != null) o.Kullanici = y;
+                }
+            }
+        }
+
         private static Oturum OturumBul(Baglanti ctx)
         {
             string t = ctx.Request.Headers["X-Token"];

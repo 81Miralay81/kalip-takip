@@ -50,6 +50,7 @@ table.tbl{border-collapse:collapse;width:100%;font-size:13px}
 .tbl th{position:sticky;top:0;background:#2a2f66;text-align:left;padding:8px 10px;white-space:nowrap;z-index:1}
 .tbl td{padding:7px 10px;border-top:1px solid var(--kenar);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
 .tbl tr.sec td{background:#2d3478}
+@media(pointer:coarse){.tbl tbody tr{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 .tbl tbody tr{cursor:pointer}
 .tbl tbody tr:hover td{background:#252b5c}
 .tbl td input,.tbl td select{padding:6px 8px;font-size:13px}
@@ -127,7 +128,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='03.11.2026-Z4';
+const SURUM='03.11.2026-Z6';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -616,11 +617,42 @@ $('#portalBtn').onclick=()=>{location.hash='#/portal'};
 $('#baslik').onclick=()=>{location.hash='#/portal'};
 
 async function metaYenile(){ME=await api('/api/meta')}
+// Yönetici her girişte kritik yetki verdiği kullanıcıları görür; her biri için "kalsın" ya da "geri al" der.
+async function kritikUyari(){
+  if(!ME||!ME.admin)return;
+  let j;try{j=await api('/api/kritik')}catch(e){return}
+  const liste=(j&&j.kullanicilar)||[];
+  if(!liste.length)return;
+  const kutu=el('div'),karar={};
+  const ciz=()=>{
+    kutu.innerHTML='';
+    kutu.append(el('div',{class:'sinir',style:'margin-bottom:8px'},'Aşağıdaki kullanıcılara kritik yetkiler verilmiş. Her biri için karar verin: "Kalsın" yetkiyi korur, "Geri al" yetkiyi hemen kaldırır. Bu uyarı her girişte tekrar gösterilir.'));
+    liste.forEach(u=>{
+      const kart=el('div',{class:'kart',style:'margin-bottom:8px;padding:10px 12px'},el('b',null,u.ad));
+      u.izinler.forEach(z=>{
+        const d=karar[u.id+'|'+z.anahtar];
+        kart.append(el('div',{class:'arac',style:'margin:6px 0 0;align-items:center'},
+          el('span',{style:'flex:1 1 260px'},z.ad.replace('⚠ KRİTİK: ','')),
+          d==='geri'?el('span',{class:'et',style:'background:#4c1d1d;color:#fecaca'},'Geri alındı'):
+          d==='kalsin'?el('span',{class:'et',style:'background:#134e4a;color:#5eead4'},'Kalacak'):
+          [el('button',{class:'b gri',type:'button',style:'padding:4px 10px',onclick:()=>{karar[u.id+'|'+z.anahtar]='kalsin';ciz()}},'Kalsın'),
+           el('button',{class:'b kirmizi',type:'button',style:'padding:4px 10px',onclick:async()=>{
+             try{await api('/api/kritik/geri',{id:u.id,anahtar:z.anahtar});karar[u.id+'|'+z.anahtar]='geri';ciz();bildir(u.ad+': yetki geri alındı.','t')}catch(e){bildir(e.message,'h')}
+           }},'Geri al')]));
+      });
+      kutu.append(kart);
+    });
+    kutu.append(el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b',type:'button',onclick:()=>pen.kapat()},'Tamam, kalanlar kalsın')));
+  };
+  const pen=modal('⚠ Kritik yetki uyarısı',kutu,true);
+  ciz();
+}
 async function basla(){
   await metaYenile();
   $('#giris').style.display='none';$('#uygulama').style.display='';
   $('#kisi').textContent=ME.ad+(ME.bolum?' • '+ME.bolum:'')+'  •  sürüm '+SURUM;
   yonlendir();
+  kritikUyari();
 }
 const SAYFALAR={};
 // Sayfa adresi elle yazılsa bile yetkisiz kullanıcı sayfayı açamaz (sunucu da her işlemde ayrıca denetler).
@@ -912,7 +944,7 @@ SAYFALAR.kl=function(k){
   k.append(el('h2',null,'Kalıp Listesi'),
     el('div',{class:'arac'},mod,q,lst,kam,
       izin('kl_ekle')&&el('button',{class:'b yesil',onclick:()=>klTanim(null,yenile)},'+ Yeni kalıp'),
-      izin('kl_ekle')&&el('button',{class:'b',onclick:()=>dosya.click()},'Excel / CSV yükle'),
+      izin('kl_yukle')&&el('button',{class:'b',onclick:()=>dosya.click()},'Excel / CSV yükle'),
       izin('kl_excel')&&el('button',{class:'b gri',onclick:()=>indir('/api/kl/excel?'+qs(klAramaParam(mod.value,q.value,bolumF)),'kalip_listesi.csv')},'Excel\'e aktar'),
       ME.admin&&el('button',{class:'b gri',title:'Eski hatalı yüklemelerden kalan geçersiz lokasyonları ve bozuk tür adlarını (1"" DÖVME gibi) düzeltir',onclick:async()=>{
         try{
@@ -922,7 +954,7 @@ SAYFALAR.kl=function(k){
           const s=await api('/api/kl/onar',{uygula:'1'});await metaYenile();bildir(s.lokasyon+' lokasyon boşaltıldı, '+s.tur+' tür adı düzeltildi, '+s.tip+' kalıba tür atandı.','t');yenile();
         }catch(e){bildir(e.message,'h')}
       }},'🔧 Verileri onar'),
-      ME.admin&&(silDugme=el('button',{class:'b kirmizi',disabled:true,title:'Ekrandaki kalıplardan Kalıp Takip kaydı, talep geçmişi ya da hareketi olmayanları siler',onclick:async()=>{
+      izin('kl_sil')&&(silDugme=el('button',{class:'b kirmizi',disabled:true,title:'Ekrandaki kalıplardan Kalıp Takip kaydı, talep geçmişi ya da hareketi olmayanları siler',onclick:async()=>{
         if(!listedekiler.length){bildir('Önce silinecek kalıpları listeleyin (arama yapın).','h');return}
         if(!confirm('Ekrandaki '+listedekiler.length+' kalıptan hiçbir kaydı/geçmişi olmayanlar silinecek; kaydı olanlara dokunulmaz. Devam edilsin mi?'))return;
         try{const j=await api('/api/kl/temizsil',{kodlar:listedekiler});await metaYenile();bildir(j.mesaj,'t');yenile()}catch(e){bildir(e.message,'h')}
@@ -948,14 +980,14 @@ async function klDetay(s,yenile){
   const sekBar=el('div',{class:'sekmeler'});
   const rafSec=sel(ME.rafler,s.Raf||'',{style:'flex:0 1 200px'},'(rafsız)');
   const rafKaydet=async raf=>{try{const j=await api('/api/raf',{kod:s.KalipKodu,raf});bildir(j.mesaj,'t');s.Raf=raf;yenile()}catch(e){bildir(e.message,'h')}};
-  const yonetim=ME.admin?el('div',{class:'arac',style:'margin:0 0 8px'},
-    el('span',{class:'sinir'},'Yönetici:'),
-    el('button',{class:'b gri',type:'button',onclick:async()=>{
+  const yonetim=(ME.admin||izin('kl_sil'))?el('div',{class:'arac',style:'margin:0 0 8px'},
+    el('span',{class:'sinir'},'İşlemler:'),
+    ME.admin&&el('button',{class:'b gri',type:'button',onclick:async()=>{
       const yeni=prompt('"'+s.KalipKodu+'" için doğru kodu yazın.\nTüm kayıtları (Kalıp Takip, talep geçmişi, raf/sahip) bu koda taşınır. Doğru kod zaten varsa kayıtlar o kalıba birleşir.',s.KalipKodu);
       if(yeni===null||!yeni.trim()||yeni.trim()===s.KalipKodu)return;
       try{const j=await api('/api/kl/kodduzelt',{eski:s.KalipKodu,yeni:yeni.trim()});await metaYenile();bildir(j.mesaj,'t');m.kapat();yenile()}catch(e){bildir(e.message,'h')}
     }},'✏ Kodu düzelt'),
-    el('button',{class:'b kirmizi',type:'button',onclick:async()=>{
+    izin('kl_sil')&&el('button',{class:'b kirmizi',type:'button',onclick:async()=>{
       if(!confirm('"'+s.KalipKodu+'" Kalıp Listesi\'nden silinsin mi?'))return;
       try{const j=await api('/api/kl/sil',{kod:s.KalipKodu});bildir(j.mesaj,'t');m.kapat();yenile()}
       catch(e){
@@ -967,10 +999,10 @@ async function klDetay(s,yenile){
       }
     }},'🗑 Sil')):null;
   ic.append(el('div',{style:'color:#9aa3d6'},s.KalipAdi||''),baslik,yonetim,
-    izin('kl_ekle')&&el('div',{class:'arac',style:'margin:8px 0'},
-      el('button',{class:'b',onclick:()=>{m.kapat();klTanim(s,yenile)}},'Düzenle'),
-      el('span',{class:'sinir'},'Raf:'),rafSec,el('button',{class:'b yesil',onclick:()=>rafKaydet(rafSec.value)},'Rafı kaydet'),
-      kamDugme({},raf=>{if(![...rafSec.options].some(o=>o.value===raf))rafSec.append(el('option',{value:raf},raf));rafSec.value=raf;rafKaydet(raf)},{raf:true,etiket:'Rafı kalıba kaydet'})),sekBar,icerik);
+    (izin('kl_ekle')||izin('kl_duzenle'))&&el('div',{class:'arac',style:'margin:8px 0'},
+      izin('kl_duzenle')&&el('button',{class:'b',onclick:()=>{m.kapat();klTanim(s,yenile)}},'Düzenle'),
+      izin('kl_ekle')&&el('span',{class:'sinir'},'Raf:'),izin('kl_ekle')&&rafSec,izin('kl_ekle')&&el('button',{class:'b yesil',onclick:()=>rafKaydet(rafSec.value)},'Rafı kaydet'),
+      izin('kl_ekle')&&kamDugme({},raf=>{if(![...rafSec.options].some(o=>o.value===raf))rafSec.append(el('option',{value:raf},raf));rafSec.value=raf;rafKaydet(raf)},{raf:true,etiket:'Rafı kalıba kaydet'})),sekBar,icerik);
   const m=modal(s.KalipKodu,ic,true);
   let g;
   try{g=await api('/api/gecmis?k='+encodeURIComponent(s.Anahtar))}catch(e){icerik.append(el('div',{class:'hata'},e.message));return}
@@ -1170,6 +1202,28 @@ function genelMenu(e){
   og.push({ad:'Kısayolları göster',kisayol:'F1',aktif:true,f:kisayolListesi});
   sagMenu(e.clientX,e.clientY,og);
 }
+// Dokunmatik ekran: parmağı ~0,5 sn basılı tutmak sağ tık ile aynı (menü açılır; Talep kalıp tablosunda ise çoklu seçim modunu başlatır).
+let dokZaman=0,dokTimer=null,dokX=0,dokY=0;
+document.addEventListener('touchstart',e=>{
+  clearTimeout(dokTimer);dokZaman=0;
+  if(e.touches.length!==1)return;
+  const h0=e.target;
+  if(h0.closest&&h0.closest('input,textarea,select,#sagMenu,video,canvas,.oneri'))return;
+  const t=e.touches[0];dokX=t.clientX;dokY=t.clientY;dokZaman=Date.now();
+  dokTimer=setTimeout(()=>{
+    const h=document.elementFromPoint(dokX,dokY)||h0;
+    const ev=new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:dokX,clientY:dokY,view:window});
+    ev.dokunma=true;window.__uzunAktif=true;
+    try{if(navigator.vibrate)navigator.vibrate(15)}catch(x){}
+    h.dispatchEvent(ev);
+  },500);
+},{passive:true});
+document.addEventListener('touchmove',e=>{const t=e.touches[0];if(t&&(Math.abs(t.clientX-dokX)>10||Math.abs(t.clientY-dokY)>10))clearTimeout(dokTimer)},{passive:true});
+['touchend','touchcancel'].forEach(n=>document.addEventListener(n,()=>{clearTimeout(dokTimer);if(window.__uzunAktif){window.__uzunAktif=false;window.__uzunBirak=Date.now()}},{passive:true}));
+// uzun basmanın bıraktığı sahte fare olayları (parmak kalkınca) yoksayılır
+function uzunSonrasi(){return !!window.__uzunAktif||Date.now()-(window.__uzunBirak||0)<450}
+// uzun basmada tarayıcının kendi (gerçek) contextmenu olayı gelirse yoksay: yukarıdaki sayaç zaten işliyor
+document.addEventListener('contextmenu',e=>{if(e.isTrusted&&dokZaman&&Date.now()-dokZaman<2500){e.preventDefault();e.stopImmediatePropagation()}},true);
 document.addEventListener('contextmenu',e=>{
   if(e.defaultPrevented||e.shiftKey||e.target.closest('#sagMenu'))return;
   if(e.target.closest&&e.target.closest('video,canvas'))return;
@@ -1196,13 +1250,14 @@ function sagMenu(x,y,ogeler){
   const eski=document.getElementById('sagMenu');if(eski)eski.remove();
   const m=el('div',{id:'sagMenu',style:'position:fixed;z-index:9999;min-width:240px;max-width:92vw;max-height:94vh;overflow:auto;background:#1b2150;border:1px solid #3b4590;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);padding:4px;font-size:14px'});
   const kapat=()=>{m.remove();document.removeEventListener('mousedown',dis,true);document.removeEventListener('keydown',esc,true);window.removeEventListener('scroll',kapat,true)};
-  const dis=e=>{if(!m.contains(e.target))kapat()};
+  const t0=Date.now();
+  const dis=e=>{if(Date.now()-t0<350||uzunSonrasi())return;if(!m.contains(e.target))kapat()};
   const esc=e=>{if(e.key==='Escape')kapat()};
   ogeler.forEach(o=>{
     if(o==='-'){m.append(el('div',{style:'height:1px;background:#2c3366;margin:4px 6px'}));return}
     if(o.baslik){m.append(el('div',{style:'padding:6px 12px 2px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#8f9bd6'},o.baslik));return}
     const d=el('div',{style:'display:flex;justify-content:space-between;gap:22px;padding:8px 12px;border-radius:6px;white-space:nowrap;'+(o.aktif?'cursor:pointer;color:#e8ecff':'color:#6b7399;cursor:default'),title:o.aktif?'':(o.neden||'')},el('span',null,o.ad),o.kisayol?el('span',{style:'color:#8f9bd6;font-size:12px;align-self:center'},o.kisayol):null);
-    if(o.aktif){d.addEventListener('mouseover',()=>{d.style.background='#2d3478'});d.addEventListener('mouseout',()=>{d.style.background=''});d.addEventListener('click',()=>{kapat();o.f()})}
+    if(o.aktif){d.addEventListener('mouseover',()=>{d.style.background='#2d3478'});d.addEventListener('mouseout',()=>{d.style.background=''});d.addEventListener('click',()=>{if(Date.now()-t0<350||uzunSonrasi())return;kapat();o.f()})}
     m.append(d);
   });
   document.body.append(m);
@@ -1241,12 +1296,14 @@ SAYFALAR.talep=async function(k){
   fBolum.onchange=()=>{varsayilanAlici();ciz()};
 
   // ---- çoklu seçim (tıkla, Ctrl/Shift+tıkla, fareyi basılı tutup sürükle) ve sağ tık menüsü
-  let secili=new Set(),trler=[],surukle=false,bas=-1,sonIdx=-1;
+  let secili=new Set(),trler=[],surukle=false,bas=-1,sonIdx=-1,dokunMod=false;
   const secBilgi=el('span',{class:'sinir'});
-  function secimBoya(){trler.forEach((tr,i)=>{if(tr)tr.classList.toggle('sec',secili.has(satirlar[i]))});secBilgi.textContent=secili.size?secili.size+' kalıp seçili':''}
+  function secimBoya(){trler.forEach((tr,i)=>{if(tr)tr.classList.toggle('sec',secili.has(satirlar[i]))});if(!secili.size)dokunMod=false;secBilgi.textContent=secili.size?secili.size+' kalıp seçili'+(dokunMod?' • dokunarak seçmeye devam edin':''):''}
   function aralik(a,b){const x=Math.min(a,b),y=Math.max(a,b);secili=new Set(satirlar.slice(x,y+1));secimBoya()}
   function satirFare(e,i){
     if(e.button!==0||e.target.closest('input,button,select,textarea'))return;
+    if(uzunSonrasi())return;
+    if(dokunMod){const t=satirlar[i];if(secili.has(t))secili.delete(t);else secili.add(t);sonIdx=i;secimBoya();return}
     if(e.ctrlKey||e.metaKey){const t=satirlar[i];if(secili.has(t))secili.delete(t);else secili.add(t);sonIdx=i;secimBoya();return}
     if(e.shiftKey&&sonIdx>=0){aralik(sonIdx,i);return}
     secili=new Set([satirlar[i]]);sonIdx=i;bas=i;surukle=true;secimBoya();
@@ -1291,6 +1348,12 @@ SAYFALAR.talep=async function(k){
     if(e.target.closest('input,textarea,select'))return;
     const tr=e.target.closest('tbody tr');
     const i=tr?trler.indexOf(tr):-1;
+    if(e.dokunma){
+      if(i<0)return; // satır dışında genel menü açılır
+      e.preventDefault();secili.add(satirlar[i]);sonIdx=i;dokunMod=true;secimBoya();
+      bildir('Seçim modu: kalıplara dokunarak seçin / seçimi kaldırın. İşlemler için "☰ İşlemler".','b');
+      return;
+    }
     if(i>=0&&!secili.has(satirlar[i])){secili=new Set([satirlar[i]]);sonIdx=i;secimBoya()}
     e.preventDefault();menuAc(e.clientX,e.clientY);
   });
