@@ -33,3 +33,9 @@ SÜRÜM Z3 (03.11.2026)
   Her menüde: sayfayı yenile, aramaya git, portal, geri, kısayolları göster.
 - Klavye kısayolları: Ctrl+S Kaydet, Alt+N Yeni/Ekle, Alt+U Yükle, Alt+E Excel'e aktar, Alt+K Kamera, / Arama, Alt+R Yenile, Alt+P Portal, F1 kısayol listesi.
 - Talep kalıp tablosunda kendi özel menüsü (rafa al, teslim al...) aynen kalır.
+
+SÜRÜM Z4 (03.11.2026)
+- Sağ tık menüsü ve kısayollar yetkiye göre çalışır: yetkisi olmayan kullanıcıya Yeni / Düzenle / Sil / Excel gibi düğmeler hiç çıkmaz (menü sayfada çizilen düğmelerden oluşur, düğmeler yetkiye göre çizilir).
+- Uygun olmayan işlemler pasif (soluk) görünür ve kısayolla da çalışmaz: liste boşken "Kaydı olmayanları sil", kalıp seçilmeden "Seçilenlere ata", gönderilmiş açık talepte "Sil".
+- Talep: "Talep Aç" yalnız talep_ekle, "Güncelle" yalnız talep_guncelle, "Sil" yalnız talep_sil yetkisi olanlara görünür.
+- Sayfa adresi elle yazılsa bile yetkisiz sayfa açılmaz ("Bu sayfayı açma yetkiniz yok.").

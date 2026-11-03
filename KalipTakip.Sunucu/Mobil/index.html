@@ -127,7 +127,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='03.11.2026-Z3';
+const SURUM='03.11.2026-Z4';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -623,12 +623,27 @@ async function basla(){
   yonlendir();
 }
 const SAYFALAR={};
+// Sayfa adresi elle yazılsa bile yetkisiz kullanıcı sayfayı açamaz (sunucu da her işlemde ayrıca denetler).
+function sayfaYetkisi(ad){
+  if(!ME)return false;
+  if(ME.admin)return true;
+  switch(ad){
+    case 'ara':case 'kl':case 'raflar':return izin('kl_gor');
+    case 'kt':return izin('kalip_gor');
+    case 'talep':return izin('talep_gor');
+    case 'atama':return izin('kl_ekle');
+    case 'hizli':return izin('kl_ekle')||izin('talep_kalip_durum');
+    case 'turler':case 'kul':case 'lok':case 'bildirim':case 'cihaz':return false;
+    default:return true;
+  }
+}
 function yonlendir(){
   if(!ME)return;
   const ad=(location.hash||(izin('kl_gor')?'#/ara':'#/portal')).replace('#/','').split('?')[0];
   const s=SAYFALAR[ad]||SAYFALAR.portal;
   document.querySelectorAll('.modal,.oneri').forEach(x=>x.remove());
   const k=$('#icerik');k.innerHTML='';
+  if(!sayfaYetkisi(ad)){k.append(el('div',{class:'hata'},'Bu sayfayı açma yetkiniz yok.'));return}
   Promise.resolve(s(k)).catch(e=>{k.append(el('div',{class:'hata'},e.message))});
 }
 window.addEventListener('hashchange',yonlendir);
@@ -843,7 +858,7 @@ SAYFALAR.kl=function(k){
   const mod=sel([{v:'0',t:'Kalıp ile ara'},{v:'1',t:'Raf ile ara'}].concat(KL_ALANLAR.map(a=>({v:'a:'+a[0],t:a[1]+' ile ara'}))),hp.get('alan')?'a:'+hp.get('alan'):'0',{style:'flex:0 0 200px'});
   const q=el('input',{placeholder:'Kalıp kodu veya adı',value:hp.get('q')||''});
   const sonuc=el('div'),bilgi=el('div',{class:'sinir'});
-  let listedekiler=[],yenSira=0,bolumF=hp.get('bolum')||'';
+  let listedekiler=[],yenSira=0,bolumF=hp.get('bolum')||'',silDugme=null;
   const bolumRozet=el('span',{class:'et',style:'display:none;cursor:pointer',title:'Bölüm süzgecini kaldır'});
   const rozetGuncelle=()=>{bolumRozet.style.display=bolumF?'':'none';bolumRozet.textContent='Sahip bölüm: '+bolumF+'  ✕'};
   bolumRozet.onclick=()=>{bolumF='';rozetGuncelle();yenile()};
@@ -877,6 +892,7 @@ SAYFALAR.kl=function(k){
       if(sira!==yenSira)return;
       sonuc.innerHTML='';
       listedekiler=j.satirlar.map(x=>x.KalipKodu);
+      if(silDugme)silDugme.disabled=!listedekiler.length;
       sonuc.append(tablo(ME.klKolonlar,j.satirlar,{sec:(s,tr)=>{secIsaretle(tr);klDetay(s,yenile)}}));
       bilgi.textContent=j.satirlar.length?j.satirlar.length+' kalıp'+(j.sinirli?' (ilk 100; aramayı daraltın)':''):'Bu ölçüte uyan kalıp bulunamadı.';
     }catch(e){if(sira!==yenSira)return;bilgi.textContent='';sonuc.innerHTML='';sonuc.append(el('div',{class:'hata'},e.message))}
@@ -906,11 +922,11 @@ SAYFALAR.kl=function(k){
           const s=await api('/api/kl/onar',{uygula:'1'});await metaYenile();bildir(s.lokasyon+' lokasyon boşaltıldı, '+s.tur+' tür adı düzeltildi, '+s.tip+' kalıba tür atandı.','t');yenile();
         }catch(e){bildir(e.message,'h')}
       }},'🔧 Verileri onar'),
-      ME.admin&&el('button',{class:'b kirmizi',title:'Ekrandaki kalıplardan Kalıp Takip kaydı, talep geçmişi ya da hareketi olmayanları siler',onclick:async()=>{
+      ME.admin&&(silDugme=el('button',{class:'b kirmizi',disabled:true,title:'Ekrandaki kalıplardan Kalıp Takip kaydı, talep geçmişi ya da hareketi olmayanları siler',onclick:async()=>{
         if(!listedekiler.length){bildir('Önce silinecek kalıpları listeleyin (arama yapın).','h');return}
         if(!confirm('Ekrandaki '+listedekiler.length+' kalıptan hiçbir kaydı/geçmişi olmayanlar silinecek; kaydı olanlara dokunulmaz. Devam edilsin mi?'))return;
         try{const j=await api('/api/kl/temizsil',{kodlar:listedekiler});await metaYenile();bildir(j.mesaj,'t');yenile()}catch(e){bildir(e.message,'h')}
-      }},'🗑 Kaydı olmayanları sil'),dosya),
+      }},'🗑 Kaydı olmayanları sil')),dosya),
     el('div',{class:'sinir'},'Yükleme dosyasında başlıklar: Kalıp Kodu (zorunlu), Kalıp Adı, Kalıp Türü, Tepe Kodu, Lokasyon, Raf, Sahip Bölüm, Notlar.'),
     el('div',{class:'arac',style:'margin:2px 0 6px'},bilgi,bolumRozet),sonuc);
   listeDoldur().then(yenile);
@@ -1503,7 +1519,7 @@ SAYFALAR.talep=async function(k){
     fOnc.value='Normal';fEden.value=ME.ad;
     fTarih.value=bugun();fTermin.value='';fStatu.value='Açık';fKapanis.value='';fIptal.checked=false;fIptal.disabled=true;
     hata.innerHTML='';ciz();
-    btnKaydet.textContent='Talep Aç';btnSil.style.display='none';
+    btnKaydet.textContent='Talep Aç';btnKaydet.style.display=izin('talep_ekle')?'':'none';btnSil.style.display='none';
     listeSec(null);
   }
   async function yukle(id){
@@ -1516,7 +1532,7 @@ SAYFALAR.talep=async function(k){
       fIptal.checked=t.Statu==='İptal';fIptal.disabled=!izin('talep_guncelle')||!!t.GonderTarihi;
       satirlar=j.satirlar.map(s=>Object.assign({},s));
       hata.innerHTML='';ciz();
-      btnKaydet.textContent='Güncelle';btnSil.style.display=(izin('talep_sil')&&(!t.GonderTarihi||t.Statu==='Kapandı'||t.Statu==='İptal'))?'':'none';
+      btnKaydet.textContent='Güncelle';btnKaydet.style.display=izin('talep_guncelle')?'':'none';btnSil.style.display=izin('talep_sil')?'':'none';btnSil.disabled=!(!t.GonderTarihi||t.Statu==='Kapandı'||t.Statu==='İptal');btnSil.title=btnSil.disabled?'Gönderilmiş ve açık talep silinemez.':'';
       listeSec(id);
     }catch(e){bildir(e.message,'h')}
   }
@@ -1712,8 +1728,8 @@ SAYFALAR.atama=async function(k){
   const bolum=sel(ME.bolumler,'',{style:'flex:0 1 220px'},'-- bölüm seçin --');
   const liste=el('div'),bilgi=el('div',{class:'sinir'}),hata=el('div');
   const yapistir=el('textarea',{rows:4,placeholder:'Kod listesi yapıştırın (her satıra bir kalıp kodu; Excel sütunu olduğu gibi yapıştırılabilir)'});
-  let satirlar=[];const secili=new Set();
-  function sayacYaz(){bilgi.textContent=satirlar.length+' kalıp listelendi  •  '+secili.size+' seçili'}
+  let satirlar=[];const secili=new Set();let ataDugme=null;
+  function sayacYaz(){bilgi.textContent=satirlar.length+' kalıp listelendi  •  '+secili.size+' seçili';if(ataDugme)ataDugme.disabled=!secili.size}
   function ciz(){
     liste.innerHTML='';
     const tum=el('input',{type:'checkbox',onchange:()=>{satirlar.forEach(x=>tum.checked?secili.add(x.KalipKodu):secili.delete(x.KalipKodu));ciz()}});
@@ -1755,7 +1771,7 @@ SAYFALAR.atama=async function(k){
         el('button',{class:'b gri',onclick:yenile},'Ara')),
       bilgi,liste,
       el('div',{class:'arac',style:'margin-top:10px'},el('span',{class:'sinir'},'Seçilenleri şu bölüme ata:'),bolum,
-        el('button',{class:'b yesil',onclick:()=>ata([...secili])},'Seçilenlere ata')),
+        ataDugme=el('button',{class:'b yesil',disabled:true,title:'Önce listeden kalıp seçin',onclick:()=>ata([...secili])},'Seçilenlere ata')),
       el('div',{class:'izg',style:'margin-top:16px'},'Listeden yapıştırarak ata'),yapistir,
       el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b',onclick:()=>{
         const kodlar=yapistir.value.split(/[\r\n;\t]+/).map(x=>x.trim()).filter(Boolean);ata(kodlar)
