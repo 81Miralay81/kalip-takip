@@ -50,6 +50,7 @@ table.tbl{border-collapse:collapse;width:100%;font-size:13px}
 .tbl th{position:sticky;top:0;background:#2a2f66;text-align:left;padding:8px 10px;white-space:nowrap;z-index:1}
 .tbl td{padding:7px 10px;border-top:1px solid var(--kenar);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
 .tbl tr.sec td{background:#2d3478}
+.secsat{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#1e2550;border:1px solid #4b57b8;border-radius:10px;padding:8px 12px;font-size:13px}
 .grafikler{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px;margin-top:14px}
 @media(max-width:900px){.grafikler{grid-template-columns:1fr}}
 .gk{padding:14px}
@@ -150,7 +151,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='03.11.2026-Z11';
+const SURUM='03.11.2026-Z12';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -914,15 +915,18 @@ function ktForm(s,yenile){
   m.ov.firstChild.style.maxWidth='1500px';
 }
 
-function istGrafik(satirlar,turler,tipler){
+function istGrafik(satirlar0,turler,tipler,secili,temizle){
   const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const TUR_RENK={'TASHİH':'#f59e0b','YENİ':'#22c55e','İLAVE':'#38bdf8','(boş)':'#94a3b8','TAMİR':'#f472b6','HURDA':'#ef4444'};
   const YEDEK=['#a78bfa','#fb923c','#2dd4bf','#e879f9','#facc15','#60a5fa'];
   let yi=0;const turRenk={};turler.forEach(u=>{turRenk[u]=TUR_RENK[u]||YEDEK[yi++%YEDEK.length]});
   const TIP_RENK=['#6366f1','#14b8a6','#f59e0b','#ec4899','#22c55e','#38bdf8','#a78bfa','#fb923c'];
   const kisa=t=>{t=String(t).replace(/\s*KALIBI?\s*$/i,'').replace(/\s*KALIP\s*$/i,'');return t.length>14?t.slice(0,13)+'…':t};
+  const secRow=secili?satirlar0.find(r=>r['Kalıp türü']===secili):null;
+  const satirlar=secRow?turler.map(u=>{const n=secRow[u]||0;return {'Kalıp türü':u,Toplam:n,[u]:n}}):satirlar0;
   const veri=satirlar.filter(r=>r.Toplam>0);
   const wrap=el('div',{class:'grafikler'});
+  if(secRow)wrap.append(el('div',{class:'secsat'},el('span',null,'Seçili kalıp türü: ',el('b',null,secili),' — tasarım modeline göre dağılım'),el('button',{class:'b gri',onclick:temizle},'✕ Seçimi kaldır')));
   if(!veri.length){wrap.append(el('div',{class:'sinir'},'Grafik için veri yok.'));return wrap}
   // ---- mum (sütun) grafiği: kalıp türüne göre yığılmış, tasarım modeli renkli
   const W=620,H=330,sol=46,ust=26,alt=70,sag=12;
@@ -936,33 +940,38 @@ function istGrafik(satirlar,turler,tipler){
   veri.forEach((r,i)=>{
     const x=sol+bw*i+(bw-kw)/2;let y=ust+ph;
     turler.forEach(u=>{const n=r[u]||0;if(!n)return;const h=n/tavan*ph;y-=h;
-      g+='<rect x="'+x+'" y="'+y+'" width="'+kw+'" height="'+Math.max(h,1)+'" rx="2" fill="'+turRenk[u]+'"><title>'+esc(r['Kalıp türü']+' — '+u+': '+n.toLocaleString('tr'))+'</title></rect>'});
+      g+='<rect x="'+x+'" y="'+y+'" width="'+kw+'" height="'+Math.max(h,1)+'" rx="2" fill="'+turRenk[u]+'"><title>'+esc((secRow?secili:r['Kalıp türü'])+' — '+u+': '+n.toLocaleString('tr'))+'</title></rect>'});
     g+='<text x="'+(x+kw/2)+'" y="'+(y-6)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#e2e8f0">'+r.Toplam.toLocaleString('tr')+'</text>';
     g+='<text x="'+(x+kw/2)+'" y="'+(ust+ph+16)+'" text-anchor="middle" font-size="11" fill="#cbd5e1"><title>'+esc(r['Kalıp türü'])+'</title>'+esc(kisa(r['Kalıp türü']))+'</text>';
   });
   const bar=el('div',{class:'kart gk'});
-  bar.append(el('h3',{style:'margin:0 0 6px'},'Kalıp türüne göre kayıt sayısı'));
+  bar.append(el('h3',{style:'margin:0 0 6px'},secRow?'Tasarım modeline göre kayıt sayısı':'Kalıp türüne göre kayıt sayısı'));
   const sv1=el('div');sv1.innerHTML='<svg viewBox="0 0 '+W+' '+(H-alt+24)+'" width="100%" role="img" aria-label="Sütun grafik">'+g+'</svg>';bar.append(sv1);
   const lej=el('div',{class:'lej'});turler.forEach(u=>lej.append(el('span',null,el('i',{style:'background:'+turRenk[u]}),u)));bar.append(lej);
   // ---- pasta (halka): kalıp türünün payı
   const toplam=veri.reduce((a,r)=>a+r.Toplam,0),R=78,C=2*Math.PI*R;
   let pg='',ofs=0;
   veri.forEach((r,i)=>{const len=r.Toplam/toplam*C;
-    pg+='<circle r="'+R+'" cx="110" cy="110" fill="none" stroke="'+TIP_RENK[i%TIP_RENK.length]+'" stroke-width="34" stroke-dasharray="'+Math.max(len-1.5,0.5)+' '+(C-Math.max(len-1.5,0.5))+'" stroke-dashoffset="'+(-ofs)+'" transform="rotate(-90 110 110)"><title>'+esc(r['Kalıp türü']+': '+r.Toplam.toLocaleString('tr')+' (%'+(r.Toplam/toplam*100).toFixed(1).replace('.',',')+')')+'</title></circle>';
+    pg+='<circle r="'+R+'" cx="110" cy="110" fill="none" stroke="'+(secRow?turRenk[r['Kalıp türü']]:TIP_RENK[i%TIP_RENK.length])+'" stroke-width="34" stroke-dasharray="'+Math.max(len-1.5,0.5)+' '+(C-Math.max(len-1.5,0.5))+'" stroke-dashoffset="'+(-ofs)+'" transform="rotate(-90 110 110)"><title>'+esc(r['Kalıp türü']+': '+r.Toplam.toLocaleString('tr')+' (%'+(r.Toplam/toplam*100).toFixed(1).replace('.',',')+')')+'</title></circle>';
     ofs+=len});
   pg+='<text x="110" y="106" text-anchor="middle" font-size="12" fill="#94a3b8">Toplam</text><text x="110" y="130" text-anchor="middle" font-size="24" font-weight="700" fill="#f1f5f9">'+toplam.toLocaleString('tr')+'</text>';
   const pasta=el('div',{class:'kart gk'});
-  pasta.append(el('h3',{style:'margin:0 0 6px'},'Kalıp türü payı'));
+  pasta.append(el('h3',{style:'margin:0 0 6px'},secRow?'Tasarım modeli payı':'Kalıp türü payı'));
   const ic=el('div',{class:'pasta'});
   const sv2=el('div',{style:'flex:0 0 200px;max-width:100%;margin:0 auto'});sv2.innerHTML='<svg viewBox="0 0 220 220" width="200" height="200" role="img" aria-label="Pasta grafik">'+pg+'</svg>';
   const lj=el('div',{class:'lej dik'});
-  veri.forEach((r,i)=>lj.append(el('div',null,el('i',{style:'background:'+TIP_RENK[i%TIP_RENK.length]}),el('span',{class:'ln',title:r['Kalıp türü']},kisa(r['Kalıp türü'])),el('b',null,'%'+(r.Toplam/toplam*100).toFixed(1).replace('.',',')),el('small',null,r.Toplam.toLocaleString('tr')))));
+  veri.forEach((r,i)=>lj.append(el('div',null,el('i',{style:'background:'+(secRow?turRenk[r['Kalıp türü']]:TIP_RENK[i%TIP_RENK.length])}),el('span',{class:'ln',title:r['Kalıp türü']},kisa(r['Kalıp türü'])),el('b',null,'%'+(r.Toplam/toplam*100).toFixed(1).replace('.',',')),el('small',null,r.Toplam.toLocaleString('tr')))));
   ic.append(sv2,lj);pasta.append(ic);
   wrap.append(bar,pasta);return wrap;
 }
 async function ktIstatistik(bolum0){
   const bas=el('input',{type:'date'}),bit=el('input',{type:'date'}),sonuc=el('div');
+  let secTip=null,sonVeri=null;const grafikKutu=el('div');
   const bol=sel(bolumSecenekleri(),bolum0||'',{},'Tüm bölümler');bol.onchange=()=>getir();
+  function grafikCiz(){
+    grafikKutu.innerHTML='';if(!sonVeri)return;
+    grafikKutu.append(istGrafik(sonVeri.satirlar,sonVeri.turler,sonVeri.tipler,secTip,()=>{secTip=null;document.querySelectorAll('.modal tr.sec').forEach(x=>x.classList.remove('sec'));grafikCiz()}));
+  }
   async function getir(){
     try{
       const j=await api('/api/kt/istatistik?'+qs({bas:bas.value,bit:bit.value,bolum:bol.value}));
@@ -972,7 +981,17 @@ async function ktIstatistik(bolum0){
       const satirlar=tipler.map(t=>{const o={'Kalıp türü':t};let top=0;turler.forEach(u=>{const n=sayi[t+'|'+u]||0;o[u]=n;top+=n});o.Toplam=top;return o});
       const kol=[{alan:'Kalıp türü',baslik:'Kalıp türü'}].concat(turler.map(u=>({alan:u,baslik:u})),[{alan:'Toplam',baslik:'Toplam'}]);
       const gen={'Kalıp türü':'TOPLAM'};let g=0;turler.forEach(u=>{const n=satirlar.reduce((a,r)=>a+r[u],0);gen[u]=n;g+=n});gen.Toplam=g;satirlar.push(gen);
-      sonuc.innerHTML='';const veriSatir=satirlar.slice(0,-1);sonuc.append(tablo(kol,satirlar),istGrafik(veriSatir,turler,tipler));
+      sonVeri={satirlar:satirlar.slice(0,-1),turler,tipler};
+      if(secTip&&!sonVeri.satirlar.some(r=>r['Kalıp türü']===secTip))secTip=null;
+      const tb=tablo(kol,satirlar,{sec:(r,tr)=>{
+        const ad=r['Kalıp türü'];
+        if(ad==='TOPLAM'||ad===secTip){secTip=null;tr.parentNode.querySelectorAll('tr.sec').forEach(x=>x.classList.remove('sec'))}
+        else{secTip=ad;secIsaretle(tr)}
+        grafikCiz();
+      }});
+      sonuc.innerHTML='';sonuc.append(el('div',{class:'sinir'},'İpucu: tablodan bir kalıp türüne tıklayın, grafikler o türe göre değişir. Aynı satıra tekrar tıklayınca seçim kalkar.'),tb,grafikKutu);
+      if(secTip){const i=sonVeri.satirlar.findIndex(r=>r['Kalıp türü']===secTip);const trs=tb.querySelectorAll('tbody tr');if(trs[i])trs[i].classList.add('sec')}
+      grafikCiz();
     }catch(e){sonuc.innerHTML='';sonuc.append(el('div',{class:'hata'},e.message))}
   }
   modal('İstatistik (bitiş tarihine göre)',el('div',null,

@@ -56,3 +56,5 @@ Sürüm Z8: Kritik uyarıdan "Geri al" yapılınca açık kullanıcı formundaki
 Sürüm Z9-Z10: Tüm tablolarda sütun ayırıcı çizgiler. Kalıp Takip: Excel/CSV yükleme (kt_yukle, KRİTİK): ID ile eşleşir, önizleme + onay, silme yok, parça kodu değişmez, Hafta/Toplam Zaman otomatik.
 
 Sürüm Z11: İstatistik penceresine sütun (yığılmış) ve halka (pasta) grafik.
+
+Sürüm Z12: İstatistikte tablo satırı seçilince grafikler o kalıp türüne göre değişir; tekrar tıklama / Seçimi kaldır ile geri döner.
