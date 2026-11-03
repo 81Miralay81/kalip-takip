@@ -25,3 +25,11 @@ SÜRÜM Z (03.11.2026)
 
 SÜRÜM Z2 (03.11.2026)
 - "🔧 Verileri onar": türü listede olmayan kalıplara (ör. kalıp türü yerine parça adı yazılmış olanlar) kod sonundaki numaraya göre tür atar: -1 -> "1" DÖVME KALIBI, -2 -> "2" ÇAPAK KESME KALIBI, -3 -> "3" BASKI KALIBI (-K-1, -C-1 gibi ara harfliler de dahil). Önce sayıyı gösterir, onay ister; kodu tahmin edilemeyenlere dokunmaz.
+
+SÜRÜM Z3 (03.11.2026)
+- Tüm sayfalarda tarayıcının sağ tık menüsü yerine uygulamanın menüsü açılır (Shift + sağ tık: tarayıcı menüsü).
+  Menü bulunduğunuz sayfanın/penceresinin düğmelerinden otomatik oluşur; kullanılamayan düğmeler soluk görünür.
+  Tablo satırında: satırı aç, satırdaki düğmeler, hücreyi/satırı kopyala. Yazı kutularında: Kes / Kopyala / Yapıştır / Tümünü seç.
+  Her menüde: sayfayı yenile, aramaya git, portal, geri, kısayolları göster.
+- Klavye kısayolları: Ctrl+S Kaydet, Alt+N Yeni/Ekle, Alt+U Yükle, Alt+E Excel'e aktar, Alt+K Kamera, / Arama, Alt+R Yenile, Alt+P Portal, F1 kısayol listesi.
+- Talep kalıp tablosunda kendi özel menüsü (rafa al, teslim al...) aynen kalır.
