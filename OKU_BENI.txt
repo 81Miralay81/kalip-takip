@@ -48,3 +48,5 @@ SÜRÜM Z5-Z6 (03.11.2026)
   Sunucu, kalıp var olan bir kodla "yeni kalıp" gönderilse bile düzenleme yetkisi ister.
 - Kritik yetkiler: sil (Kalıp Takip kaydı), talep_sil, kl_duzenle, kl_yukle, kl_sil. Yönetici her girişte bu yetkileri taşıyan kullanıcıların listesini görür; her yetki için "Kalsın" ya da "Geri al" (anında kaldırır, açık oturuma da işler).
 - Cihaz kontrolü artık varsayılan AÇIK (ayar hiç yazılmamışsa). Daha önce giriş yapmış cihazlar zaten "Onaylı" kayıtlıdır.
+
+Sürüm Z7: Kullanıcı formunda Bölümler, Bildirim ve her yetki grubu açılır pencere (başlıkta seçili/toplam sayısı); varsayılan kapalı.

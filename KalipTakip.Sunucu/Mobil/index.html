@@ -76,6 +76,14 @@ table.tbl{border-collapse:collapse;width:100%;font-size:13px}
 video{width:100%;border-radius:12px;margin-top:8px;background:#000}
 .combo{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24'><path fill='%239aa3d6' d='M7 10l5 5 5-5z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
 .izg{margin:10px 0 2px;font-weight:700;color:#c7d2fe}
+.ac{border:1px solid #2a3350;border-radius:8px;margin:8px 0;background:#141a2c}
+.ac>summary{cursor:pointer;padding:9px 12px;font-weight:700;color:#c7d2fe;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none}
+.ac>summary::-webkit-details-marker{display:none}
+.ac>summary::before{content:'▸';margin-right:8px;transition:transform .15s}
+.ac[open]>summary::before{transform:rotate(90deg)}
+.ac>summary .ad{flex:1}
+.ac>summary .sy{font-size:12px;font-weight:600;color:#93c5fd;background:#1e293b;border-radius:10px;padding:1px 9px}
+.ac>.ic{padding:2px 12px 10px}
 .izl label{display:flex;align-items:center;color:var(--yazi);font-size:14px;margin:3px 0}
 @media(max-width:700px){
 html,body{font-size:15px;overflow-x:hidden}
@@ -128,7 +136,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='03.11.2026-Z6';
+const SURUM='03.11.2026-Z7';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -1980,12 +1988,18 @@ SAYFALAR.kul=async function(k){
       const c=el('input',{type:'checkbox',checked:s?(s.bolumler||[]).some(x=>String(x).toLocaleUpperCase('tr')===b.toLocaleUpperCase('tr')):false});
       bolKutular[b]=c;bolKutu.append(el('label',null,c,b));
     });
-    tum.onchange=()=>{Object.keys(bolKutular).forEach(b=>{bolKutular[b].disabled=tum.checked})};tum.onchange();
+    const bolSy=el('span',{class:'sy'});
+    const bolSayac=()=>{const n=Object.keys(bolKutular).filter(b=>bolKutular[b].checked).length;bolSy.textContent=tum.checked?'TÜMÜ':n+' / '+Object.keys(bolKutular).length};
+    Object.keys(bolKutular).forEach(b=>bolKutular[b].addEventListener('change',bolSayac));
+    tum.onchange=()=>{Object.keys(bolKutular).forEach(b=>{bolKutular[b].disabled=tum.checked});bolSayac()};tum.onchange();
     const adm=el('input',{type:'checkbox',checked:s?s.admin:false}),akt=el('input',{type:'checkbox',checked:s?s.aktif:true});
     const eposta=el('input',{value:s?s.email||'':'',placeholder:'ad@sirket.com',type:'email'}),tg=el('input',{value:s?s.telegram||'':'',placeholder:'Telegram kimliği (sayı)'}),bld=el('input',{type:'checkbox',checked:s?!!s.bildirim:false});
     const kutular={};
     const gruplar=[...new Set(ME.tanimlar.map(t=>t.grup))];
     const izKutu=el('div',{class:'izl'});
+    const sayaclar={};
+    function ac(baslik,sayac,...icerik){const d=el('details',{class:'ac'},el('summary',null,el('span',{class:'ad'},baslik),sayac||''),el('div',{class:'ic'},...icerik));return d}
+    function sayacYaz(){gruplar.forEach(g=>{const l=ME.tanimlar.filter(t=>t.grup===g);const n=l.filter(t=>kutular[t.anahtar].checked).length;sayaclar[g].textContent=n+' / '+l.length;sayaclar[g].style.opacity=n?1:.5})}
     function uygula(){
       gruplar.forEach(g=>{
         const anahtar=ME.tanimlar.find(t=>t.grup===g&&t.grupAnahtari);
@@ -1995,28 +2009,32 @@ SAYFALAR.kul=async function(k){
           else c.disabled=!!anahtar&&t.anahtar!==anahtar.anahtar&&!kutular[anahtar.anahtar].checked;
         });
       });
+      sayacYaz();
     }
     gruplar.forEach(g=>{
-      izKutu.append(el('div',{class:'izg'},g));
+      const sy=el('span',{class:'sy'});sayaclar[g]=sy;
+      const lbl=[];
       ME.tanimlar.filter(t=>t.grup===g).forEach(t=>{
         const c=el('input',{type:'checkbox',checked:s?s.izinler.indexOf(t.anahtar)>=0:false,onchange:uygula});
-        kutular[t.anahtar]=c;izKutu.append(el('label',null,c,t.ad));
+        kutular[t.anahtar]=c;lbl.push(el('label',null,c,t.ad));
       });
+      izKutu.append(ac(g,sy,...lbl));
     });
     adm.onchange=uygula;uygula();
-    if(s&&s.admin)ME.tanimlar.forEach(t=>kutular[t.anahtar].checked=true);
+    if(s&&s.admin)ME.tanimlar.forEach(t=>kutular[t.anahtar].checked=true);sayacYaz();
     const hata=el('div');
     form.append(el('h3',{style:'margin-top:0'},s?s.ad+' - düzenle':'Yeni kullanıcı'),veriListe('dlBol',ME.bolumler),
-      el('label',null,'Kullanıcı adı'),ad,el('label',null,'Parola'),par,el('div',{class:'izg',style:'margin-top:12px'},'Bölümler / lokasyonlar'),
-      el('label',{style:'display:flex;align-items:center'},tum,'Tüm bölümler (kısıtlama yok)'),
-      bolKutu,el('div',{class:'sinir'},'İşaretlenen bölümlerin kalıplarını ve taleplerini görür; talebi yalnızca bu bölümler adına açabilir. Hiçbiri işaretlenmezse yalnızca sahibi atanmamış kalıpları görür.'),
+      el('label',null,'Kullanıcı adı'),ad,el('label',null,'Parola'),par,
       el('label',{style:'display:flex;align-items:center;margin-top:10px'},adm,'Yönetici (tüm yetkiler + kullanıcı yönetimi)'),
       el('label',{style:'display:flex;align-items:center'},akt,'Aktif'),
-      el('div',{class:'izg',style:'margin-top:12px'},'Bildirim'),
+      ac('Bölümler / lokasyonlar',bolSy,
+      el('label',{style:'display:flex;align-items:center'},tum,'Tüm bölümler (kısıtlama yok)'),
+      bolKutu,el('div',{class:'sinir'},'İşaretlenen bölümlerin kalıplarını ve taleplerini görür; talebi yalnızca bu bölümler adına açabilir. Hiçbiri işaretlenmezse yalnızca sahibi atanmamış kalıpları görür.')),
+      ac('Bildirim',null,
       el('label',{style:'display:flex;align-items:center'},bld,'Bildirim al (kendi bölümlerine gelen talep haberleri)'),
       el('label',null,'E-posta'),eposta,el('label',null,'Telegram kimliği'),tg,
-      el('div',{class:'sinir'},'Kimliği bulmak için kişi Telegram\'da botu açıp bir mesaj yazsın; Bildirim Ayarları sayfasındaki "Bota yazanları bul" listeler.'),
-      el('div',{class:'izg',style:'margin-top:12px'},'Yetkiler'),izKutu,hata,
+      el('div',{class:'sinir'},'Kimliği bulmak için kişi Telegram\'da botu açıp bir mesaj yazsın; Bildirim Ayarları sayfasındaki "Bota yazanları bul" listeler.')),
+      el('div',{class:'izg',style:'margin-top:12px'},'Yetkiler (başlığa tıklayıp açın)'),izKutu,hata,
       el('div',{class:'arac',style:'margin-top:12px'},
         el('button',{class:'b yesil',onclick:async()=>{
           hata.innerHTML='';
