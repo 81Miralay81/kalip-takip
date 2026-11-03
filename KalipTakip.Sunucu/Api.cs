@@ -283,7 +283,21 @@ namespace KalipTakip.Sunucu
                     return true;
                 case "/api/kt/istatistik":
                     Gerekli(k, Izin.Istatistik);
-                    Json(ctx, 200, new { satirlar = DuzIso(KalipRepository.Istatistik(Tarih(Q(ctx, "bas")), Tarih(Q(ctx, "bit")), Q(ctx, "bolum"))) });
+                    Json(ctx, 200, new { satirlar = DuzIso(KalipRepository.Istatistik(Tarih(Q(ctx, "bas")), Tarih(Q(ctx, "bit")), Q(ctx, "bolum"), Q(ctx, "hafta"))) });
+                    return true;
+                case "/api/kt/haftalar":
+                    Gerekli(k, Izin.Istatistik);
+                    {
+                        var liste = KalipRepository.Haftalar().Rows.Cast<DataRow>().Select(r =>
+                        {
+                            string h = Convert.ToString(r["Hafta"]).Trim();
+                            string[] pr = h.Split('/');
+                            int w = 0, y = 0;
+                            if (pr.Length == 2) { int.TryParse(pr[0], NumberStyles.Integer, Inv, out w); int.TryParse(pr[1], NumberStyles.Integer, Inv, out y); }
+                            return new { hafta = h, adet = Convert.ToInt32(r["Adet"]), w, y };
+                        }).OrderByDescending(x => x.y).ThenByDescending(x => x.w).Select(x => new { x.hafta, x.adet }).ToList();
+                        Json(ctx, 200, new { haftalar = liste });
+                    }
                     return true;
                 case "/api/kt/excel":
                     Gerekli(k, Izin.Excel);

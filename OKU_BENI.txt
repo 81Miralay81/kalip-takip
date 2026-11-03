@@ -58,3 +58,5 @@ Sürüm Z9-Z10: Tüm tablolarda sütun ayırıcı çizgiler. Kalıp Takip: Excel
 Sürüm Z11: İstatistik penceresine sütun (yığılmış) ve halka (pasta) grafik.
 
 Sürüm Z12: İstatistikte tablo satırı seçilince grafikler o kalıp türüne göre değişir; tekrar tıklama / Seçimi kaldır ile geri döner.
+
+Sürüm Z13: İstatistik penceresinde Hafta/yıl araması (yazdıkça 42/2026 gibi seçenekler; /api/kt/haftalar).

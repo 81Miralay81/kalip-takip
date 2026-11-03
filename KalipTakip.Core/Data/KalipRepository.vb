@@ -192,8 +192,13 @@ Public NotInheritable Class KalipRepository
 
     ' ---------------------------------------------------------------- RAPORLAR
 
+    ''' <summary>Kayıtlarda geçen hafta/yıl değerleri ve kayıt sayıları (yeni yıl, yeni hafta önce).</summary>
+    Public Shared Function Haftalar() As DataTable
+        Return Db.Tablo("SELECT Hafta, COUNT(*) AS Adet FROM Kalip WHERE Hafta IS NOT NULL AND TRIM(Hafta) <> '' GROUP BY Hafta")
+    End Function
+
     ''' <summary>Kalıp türü ve (YENİ/İLAVE/TASHİH) türüne göre adetler; isteğe bağlı bitiş tarihi aralığı.</summary>
-    Public Shared Function Istatistik(baslangic As Date?, bitis As Date?, Optional bolum As String = "") As DataTable
+    Public Shared Function Istatistik(baslangic As Date?, bitis As Date?, Optional bolum As String = "", Optional hafta As String = "") As DataTable
         Dim sql As New StringBuilder("SELECT KalipTuru, Tur, COUNT(*) AS Adet FROM Kalip")
         Dim p As New List(Of Object)()
         Dim kosullar As New List(Of String)()
@@ -204,6 +209,17 @@ Public NotInheritable Class KalipRepository
         If bitis.HasValue Then
             kosullar.Add("BitisTarihi <= ?")
             p.Add(bitis.Value.Date)
+        End If
+        Dim hf As String = If(hafta, "").Trim()
+        If hf.Length > 0 Then
+            ' '42/2026' tam eşleşir; '42', '42/20' gibi eksik yazım önek olarak aranır
+            If System.Text.RegularExpressions.Regex.IsMatch(hf, "^\d+/\d{4}$") Then
+                kosullar.Add("Hafta = ?")
+                p.Add(hf)
+            Else
+                kosullar.Add("Hafta LIKE ? ESCAPE '\'")
+                p.Add(LikeKacis(hf) & "%")
+            End If
         End If
         Dim bk As String = BolumKosulu(bolum, p)
         If bk.Length > 0 Then kosullar.Add(bk)

@@ -151,7 +151,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='03.11.2026-Z12';
+const SURUM='03.11.2026-Z13';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -967,6 +967,11 @@ function istGrafik(satirlar0,turler,tipler,secili,temizle){
 async function ktIstatistik(bolum0){
   const bas=el('input',{type:'date'}),bit=el('input',{type:'date'}),sonuc=el('div');
   let secTip=null,sonVeri=null;const grafikKutu=el('div');
+  const hafta=el('input',{placeholder:'örn. 42/2026',list:'dlHafta',autocomplete:'off',style:'max-width:180px'});
+  const dlHafta=el('datalist',{id:'dlHafta'});
+  hafta.onkeydown=e=>{if(e.key==='Enter')getir()};
+  hafta.onchange=()=>getir();
+  api('/api/kt/haftalar').then(j=>{(j.haftalar||[]).forEach(h=>dlHafta.append(el('option',{value:h.hafta,label:h.adet+' kayıt'})))}).catch(()=>{});
   const bol=sel(bolumSecenekleri(),bolum0||'',{},'Tüm bölümler');bol.onchange=()=>getir();
   function grafikCiz(){
     grafikKutu.innerHTML='';if(!sonVeri)return;
@@ -974,7 +979,7 @@ async function ktIstatistik(bolum0){
   }
   async function getir(){
     try{
-      const j=await api('/api/kt/istatistik?'+qs({bas:bas.value,bit:bit.value,bolum:bol.value}));
+      const j=await api('/api/kt/istatistik?'+qs({bas:bas.value,bit:bit.value,bolum:bol.value,hafta:hafta.value}));
       const turler=[...new Set(j.satirlar.map(x=>x.Tur||'(boş)'))].sort();
       const tipler=[...new Set(j.satirlar.map(x=>x.KalipTuru||'(boş)'))].sort();
       const sayi={};j.satirlar.forEach(x=>{sayi[(x.KalipTuru||'(boş)')+'|'+(x.Tur||'(boş)')]=x.Adet});
@@ -995,7 +1000,8 @@ async function ktIstatistik(bolum0){
     }catch(e){sonuc.innerHTML='';sonuc.append(el('div',{class:'hata'},e.message))}
   }
   modal('İstatistik (bitiş tarihine göre)',el('div',null,
-    el('div',{class:'arac'},el('span',null,'Başlangıç'),bas,el('span',null,'Bitiş'),bit,el('span',null,'Bölüm'),bol,el('button',{class:'b',onclick:getir},'Getir')),sonuc),true);
+    el('div',{class:'arac'},el('span',null,'Başlangıç'),bas,el('span',null,'Bitiş'),bit,el('span',null,'Bölüm'),bol,el('button',{class:'b',onclick:getir},'Getir')),
+    el('div',{class:'arac'},el('span',null,'Hafta / yıl'),hafta,dlHafta,el('button',{class:'b gri',onclick:()=>{hafta.value='';getir()}},'Temizle'),el('span',{class:'sinir',style:'margin:0'},'Yazdıkça hafta seçenekleri açılır (örn. 42/202 → 42/2025, 42/2026). Bitiş tarihinin haftasına göre.')),sonuc),true);
   getir();
 }
 
