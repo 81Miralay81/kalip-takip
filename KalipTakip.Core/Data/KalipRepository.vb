@@ -97,6 +97,12 @@ Public NotInheritable Class KalipRepository
         End If
         Dim kd As KolonTanimi = Kolonlar.FirstOrDefault(Function(k) k.Alan = alan)
         If kd Is Nothing Then Throw New ArgumentException("Geçersiz arama alanı: " & alan)
+        ' "(boş)" yazılırsa seçili alanı boş olan kayıtlar gelir
+        Dim bosMu As String = metin.Trim().ToLowerInvariant()
+        If bosMu = "(boş)" OrElse bosMu = "(bos)" OrElse bosMu = "=boş" OrElse bosMu = "=bos" Then
+            If kd.Tip = KolonTipi.Metin Then Return "(" & alan & " IS NULL OR TRIM(" & alan & ") = '')"
+            Return alan & " IS NULL"
+        End If
         Select Case kd.Tip
             Case KolonTipi.Tarih
                 p.Add("%" & LikeKacis(metin.Trim()) & "%")

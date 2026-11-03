@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
@@ -50,6 +50,16 @@ table.tbl{border-collapse:collapse;width:100%;font-size:13px}
 .tbl th{position:sticky;top:0;background:#2a2f66;text-align:left;padding:8px 10px;white-space:nowrap;z-index:1}
 .tbl td{padding:7px 10px;border-top:1px solid var(--kenar);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
 .tbl tr.sec td{background:#2d3478}
+@keyframes don{to{transform:rotate(360deg)}}
+@keyframes kay{0%{left:-35%}100%{left:100%}}
+.b.mesgul{opacity:.75;cursor:progress}
+.b.mesgul::after{content:'';display:inline-block;width:12px;height:12px;margin-left:8px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:don .7s linear infinite;vertical-align:-2px}
+body.mesgul,body.mesgul *{cursor:progress}
+body.mesgul .tw{opacity:.55;transition:opacity .2s}
+#yukleCubuk{position:fixed;top:0;left:0;right:0;height:4px;z-index:99999;display:none;pointer-events:none}
+#yukleCubuk.ac{display:block}
+#yukleCubuk i{position:absolute;top:0;bottom:0;width:35%;background:linear-gradient(90deg,transparent,#60a5fa,#a78bfa,transparent);animation:kay 1s linear infinite}
+#yukleCubuk span{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#1e2550;color:#e0e7ff;border:1px solid #4b57b8;border-radius:20px;padding:6px 16px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.5)}
 .secsat{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#1e2550;border:1px solid #4b57b8;border-radius:10px;padding:8px 12px;font-size:13px}
 .grafikler{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px;margin-top:14px}
 @media(max-width:900px){.grafikler{grid-template-columns:1fr}}
@@ -151,13 +161,18 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='03.11.2026-Z13';
+const SURUM='03.11.2026-Z14';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
   const e=document.createElement(tag);
   if(props)for(const k in props){const v=props[k];
     if(k==='class')e.className=v;else if(k==='style')e.style.cssText=v;
+    else if(tag==='button'&&k==='onclick')e.addEventListener('click',function(ev){
+      if(e.classList.contains('mesgul')){ev.preventDefault();return}
+      const r=v.call(this,ev);
+      if(r&&typeof r.then==='function'){e.classList.add('mesgul');const bit=()=>e.classList.remove('mesgul');r.then(bit,bit)}
+    });
     else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);
     else if(k==='value')e.value=v==null?'':v;
     else if(k==='checked'||k==='disabled'||k==='readOnly')e[k]=!!v;
@@ -202,7 +217,16 @@ function bildir(m,tur){
   const t=el('div',{class:'toast '+(tur||'b')},m);document.body.append(t);
   setTimeout(()=>t.remove(),tur==='h'?7000:3500);
 }
+let _bekleyen=0,_bekleZ=null;
+function bekle(n){
+  _bekleyen=Math.max(0,_bekleyen+n);
+  if(_bekleyen>0){if(!_bekleZ)_bekleZ=setTimeout(()=>{document.body.classList.add('mesgul');let c=document.getElementById('yukleCubuk');if(!c){c=el('div',{id:'yukleCubuk'},el('i'),el('span',null,'İşleniyor, lütfen bekleyin…'));document.body.append(c)}c.classList.add('ac')},150)}
+  else{clearTimeout(_bekleZ);_bekleZ=null;document.body.classList.remove('mesgul');const c=document.getElementById('yukleCubuk');if(c)c.classList.remove('ac')}
+}
 async function api(yol,govde){
+  bekle(1);try{return await api0(yol,govde)}finally{bekle(-1)}
+}
+async function api0(yol,govde){
   const o={headers:{'X-Token':T||''}};
   if(govde!==undefined){o.method='POST';o.body=JSON.stringify(govde);o.headers['Content-Type']='application/json'}
   let r;
@@ -213,12 +237,14 @@ async function api(yol,govde){
   return j;
 }
 async function indir(yol,ad){
+  bekle(1);
   try{
     const r=await fetch(yol,{headers:{'X-Token':T||''}});
     if(!r.ok){let j={};try{j=await r.json()}catch(e){}throw new Error(j.hata||'İndirilemedi')}
     const b=await r.blob(),u=URL.createObjectURL(b),a=el('a',{href:u,download:ad});document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(u),2000);
   }catch(e){bildir(e.message,'h')}
+  finally{bekle(-1)}
 }
 function izin(k){return ME&&ME.izinler.indexOf(k)>=0}
 function qs(o){return Object.keys(o).filter(k=>o[k]!==''&&o[k]!=null).map(k=>k+'='+encodeURIComponent(o[k])).join('&')}
@@ -740,7 +766,7 @@ function bolumSecenekleri(){return ME.tumBolum||ME.admin?ME.bolumler:(ME.kBoluml
 SAYFALAR.kt=function(k){
   const st={satirlar:[]};
   const alan=sel(ME.aramaAlanlari.map(a=>({v:a.alan,t:a.ad})),'',{});
-  const q=el('input',{placeholder:'Ara...'});
+  const q=el('input',{placeholder:'Ara...  (boş olanlar için: (boş) yazın)'});
   const lim=sel([{v:100,t:'Son 100'},{v:200,t:'Son 200'},{v:500,t:'Son 500'},{v:1000,t:'Son 1000'},{v:0,t:'Hepsi'}],200,{});
   const sonuc=el('div'),bilgi=el('div',{class:'sinir'});
   const bol=sel(bolumSecenekleri(),_ktBolum,{title:'Kalıp sahibi bölüme göre süz'},'Tüm bölümler');
@@ -1000,8 +1026,9 @@ async function ktIstatistik(bolum0){
     }catch(e){sonuc.innerHTML='';sonuc.append(el('div',{class:'hata'},e.message))}
   }
   modal('İstatistik (bitiş tarihine göre)',el('div',null,
-    el('div',{class:'arac'},el('span',null,'Başlangıç'),bas,el('span',null,'Bitiş'),bit,el('span',null,'Bölüm'),bol,el('button',{class:'b',onclick:getir},'Getir')),
-    el('div',{class:'arac'},el('span',null,'Hafta / yıl'),hafta,dlHafta,el('button',{class:'b gri',onclick:()=>{hafta.value='';getir()}},'Temizle'),el('span',{class:'sinir',style:'margin:0'},'Yazdıkça hafta seçenekleri açılır (örn. 42/202 → 42/2025, 42/2026). Bitiş tarihinin haftasına göre.')),sonuc),true);
+    el('div',{class:'arac'},el('span',null,'Başlangıç'),bas,el('span',null,'Bitiş'),bit),
+    el('div',{class:'arac'},el('span',null,'Hafta / yıl'),hafta,dlHafta,el('button',{class:'b gri',onclick:()=>{hafta.value='';return getir()}},'Temizle'),el('span',null,'Bölüm'),bol,el('button',{class:'b',onclick:getir},'Getir')),
+    el('div',{class:'arac'},el('span',{class:'sinir',style:'margin:0'},'Yazdıkça hafta seçenekleri açılır (örn. 42/202 → 42/2025, 42/2026). Bitiş tarihinin haftasına göre.')),sonuc),true);
   getir();
 }
 

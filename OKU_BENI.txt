@@ -60,3 +60,5 @@ Sürüm Z11: İstatistik penceresine sütun (yığılmış) ve halka (pasta) gra
 Sürüm Z12: İstatistikte tablo satırı seçilince grafikler o kalıp türüne göre değişir; tekrar tıklama / Seçimi kaldır ile geri döner.
 
 Sürüm Z13: İstatistik penceresinde Hafta/yıl araması (yazdıkça 42/2026 gibi seçenekler; /api/kt/haftalar).
+
+Sürüm Z14: Tüm arama/düğmelerde işleniyor göstergesi (üst çubuk, düğmede dönen simge); Kalıp Takip aramasında "(boş)" ile boş alanlar; İstatistik düzeni.
