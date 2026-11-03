@@ -12,3 +12,13 @@ SÜRÜM X (02.11.2026)
 SÜRÜM Y (02.11.2026)
 - Türler > Kalıp türleri: her değerin yanında "Sahip bölüm" sütunu ve "Kaydet" düğmesi. Bölümü seçip Kaydet'e basınca o türdeki tüm kalıpların sahip bölümü o bölüm olur ve tür yalnız o bölümde görünür.
 - Bölüm seçilmemişken (Ortak görünüm) bölümlere atanmış türler de listelenir, hangi bölümde olduğu sütunda görünür.
+
+SÜRÜM Z (03.11.2026)
+- KÖK NEDEN: CSV yüklemesi Excel'in kaydettiği biçimi doğru okumuyordu (tırnaklı hücreleri bozuyor, içinde ; geçen kalıp adlarında sütunları kaydırıyordu).
+  Sonuç: Kalıp Türü yerine kalıp adı, Lokasyon yerine sayı yazılıyor, "1" DÖVME KALIBI -> 1"" DÖVME KALIBI oluyordu.
+  Yeni okuyucu Excel/RFC 4180 biçimini tam destekler; ayırıcıyı (; , sekme) kendisi bulur.
+- Yükleme artık lokasyon listenizde olmayan lokasyonu yazmaz (sonuç mesajında kaç satır olduğu yazar).
+- Kalıp Listesi > "🔧 Verileri onar" (yönetici): listenizde olmayan lokasyonları boşaltır, 1"" biçimindeki bozuk tür adlarını "1" ... biçimine çevirir. Önce sayıyı gösterir, onay ister.
+- "Kalıpları göster" artık yalnız seçili bölümün kalıplarını getirir (üstte rozet, ✕ ile kaldırılır).
+- Tüm sayfalar ekranı doldurur (1500px sınırı kalktı), tablolar ekran yüksekliğine sığar.
+- Tablo sütunları başlığın sağ kenarından sürüklenerek genişletilir/daraltılır; genişlikler tarayıcıda saklanır (çift tıklama = varsayılan).

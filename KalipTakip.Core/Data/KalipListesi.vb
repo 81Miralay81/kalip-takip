@@ -136,6 +136,42 @@ Public NotInheritable Class KalipListeRepository
         End Select
     End Function
 
+    ''' <summary>Eski hatalı yüklemelerden kalan verileri onarır: lokasyon listesinde olmayan lokasyonları boşaltır, bozuk kalıp türü adlarını (sayı ve iki tırnak ile yazılmış olanları) "1" DÖVME KALIBI biçimine çevirir. uygula=False ise yalnız sayar. Döner: lokasyon sayısı|tür sayısı</summary>
+    Public Shared Function VeriOnar(uygula As Boolean) As String
+        Dim lokSay As Long = 0
+        If Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM Lokasyon")) > 0 Then
+            lokSay = Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM KalipLokasyon WHERE Lokasyon IS NOT NULL AND TRIM(Lokasyon) <> '' AND KATLA(TRIM(Lokasyon)) NOT IN (SELECT KATLA(TRIM(Ad)) FROM Lokasyon)"))
+            If uygula AndAlso lokSay > 0 Then
+                Using c As SQLiteConnection = Db.Ac()
+                    Using cmd As SQLiteCommand = Db.Komut(c, Nothing, "UPDATE KalipLokasyon SET Lokasyon = NULL WHERE Lokasyon IS NOT NULL AND TRIM(Lokasyon) <> '' AND KATLA(TRIM(Lokasyon)) NOT IN (SELECT KATLA(TRIM(Ad)) FROM Lokasyon)")
+                        cmd.ExecuteNonQuery()
+                    End Using
+                End Using
+            End If
+        End If
+        Dim turSay As Long = 0
+        Dim rx As New System.Text.RegularExpressions.Regex("^(\d+)""""\s*(.*)$")
+        For Each tablo As String In New String() {"Kalip", "KalipTanim"}
+            Dim dt As DataTable = Db.Tablo("SELECT DISTINCT KalipTuru AS D FROM " & tablo & " WHERE KalipTuru LIKE ?", "%""""%")
+            For Each r As DataRow In dt.Rows
+                Dim eski As String = Convert.ToString(r("D"))
+                Dim m As System.Text.RegularExpressions.Match = rx.Match(eski.Trim())
+                If Not m.Success Then Continue For
+                Dim yeni As String = """" & m.Groups(1).Value & """ " & m.Groups(2).Value.Trim()
+                If uygula Then
+                    Using c As SQLiteConnection = Db.Ac()
+                        Using cmd As SQLiteCommand = Db.Komut(c, Nothing, "UPDATE " & tablo & " SET KalipTuru = ? WHERE KalipTuru = ?", yeni, eski)
+                            turSay += cmd.ExecuteNonQuery()
+                        End Using
+                    End Using
+                Else
+                    turSay += Convert.ToInt64(Db.Skaler("SELECT COUNT(*) FROM " & tablo & " WHERE KalipTuru = ?", eski))
+                End If
+            Next
+        Next
+        Return lokSay.ToString() & "|" & turSay.ToString()
+    End Function
+
     ''' <summary>Arama kutusundaki açılır liste için benzersiz değerler (şu an: KalipTuru = kalıp tanımı + Kalıp Takip kayıtları + yönetim listesi).</summary>
     Public Shared Function Degerler(alan As String) As List(Of String)
         Dim sonuc As New List(Of String)()
@@ -184,9 +220,16 @@ Public NotInheritable Class KalipListeRepository
                     kosullar.Add("KATLA(l.Raf) LIKE ? ESCAPE '\'")
                     p.Add(Desen(metin))
                 Case 3
-                    Dim tamEsles As Boolean = alan.EndsWith("|tam", StringComparison.Ordinal)
-                    Dim alanAdi As String = If(tamEsles, alan.Substring(0, alan.Length - 4), alan)
+                    Dim parca As String() = alan.Split("|"c)
+                    Dim alanAdi As String = parca(0)
+                    Dim tamEsles As Boolean = parca.Contains("tam")
                     kosullar.Add(AlanKosulu(alanAdi, p, If(tamEsles, LikeKacis(TrMetin.Katla(metin.Trim())), Desen(metin))))
+                    For Each t As String In parca
+                        If t.StartsWith("b:", StringComparison.Ordinal) AndAlso t.Length > 2 Then
+                            kosullar.Add("KATLA(COALESCE(l.SahipBolum, '')) = ?")
+                            p.Add(TrMetin.Katla(t.Substring(2).Trim()))
+                        End If
+                    Next
                 Case Else
                     kosullar.Add("KATLA(l.Raf) = ?")
                     p.Add(TrMetin.Katla(metin.Trim()))
@@ -370,12 +413,62 @@ Public NotInheritable Class KalipListeRepository
 
     Private Shared Function CsvOku(yol As String) As List(Of List(Of String))
         Dim sonuc As New List(Of List(Of String))()
-        Dim satirlar As String() = File.ReadAllLines(yol, Encoding.UTF8)
-        If satirlar.Length = 0 Then Return sonuc
-        Dim ayirici As Char = If(satirlar(0).Contains(";"c), ";"c, If(satirlar(0).Contains(vbTab), ControlChars.Tab, ","c))
-        For Each s As String In satirlar
-            sonuc.Add(s.Split(ayirici).Select(Function(x) x.Trim().Trim(""""c)).ToList())
+        Dim metin As String = File.ReadAllText(yol, Encoding.UTF8)
+        If metin.Length > 0 AndAlso metin(0) = ChrW(&HFEFF) Then metin = metin.Substring(1)
+        If metin.Length = 0 Then Return sonuc
+        ' Ayırıcı: ilk satırda (tırnak dışında) en çok geçen karakter
+        Dim sayac As New Dictionary(Of Char, Integer) From {{";"c, 0}, {","c, 0}, {ControlChars.Tab, 0}}
+        Dim ic As Boolean = False
+        For Each ch0 As Char In metin
+            If ch0 = """"c Then ic = Not ic
+            If Not ic AndAlso (ch0 = ControlChars.Lf OrElse ch0 = ControlChars.Cr) Then Exit For
+            If Not ic AndAlso sayac.ContainsKey(ch0) Then sayac(ch0) += 1
         Next
+        Dim ayirici As Char = ";"c
+        Dim enCok As Integer = sayac(";"c)
+        For Each kv As KeyValuePair(Of Char, Integer) In sayac
+            If kv.Value > enCok Then
+                enCok = kv.Value
+                ayirici = kv.Key
+            End If
+        Next
+        ' RFC 4180: tırnaklı hücrelerde ayırıcı ve satır sonu serbest, "" = tek tırnak (Excel'in kaydettiği biçim)
+        Dim satir As New List(Of String)()
+        Dim hucre As New StringBuilder()
+        Dim tirnakta As Boolean = False
+        Dim i As Integer = 0
+        While i < metin.Length
+            Dim ch As Char = metin(i)
+            If tirnakta Then
+                If ch = """"c Then
+                    If i + 1 < metin.Length AndAlso metin(i + 1) = """"c Then
+                        hucre.Append(""""c)
+                        i += 1
+                    Else
+                        tirnakta = False
+                    End If
+                Else
+                    hucre.Append(ch)
+                End If
+            ElseIf ch = """"c AndAlso hucre.Length = 0 Then
+                tirnakta = True
+            ElseIf ch = ayirici Then
+                satir.Add(hucre.ToString().Trim())
+                hucre.Clear()
+            ElseIf ch = ControlChars.Cr Then
+                ' satır sonu çiftinin ilk karakteri: yoksay
+            ElseIf ch = ControlChars.Lf Then
+                satir.Add(hucre.ToString().Trim())
+                hucre.Clear()
+                If satir.Any(Function(x) x.Length > 0) Then sonuc.Add(satir)
+                satir = New List(Of String)()
+            Else
+                hucre.Append(ch)
+            End If
+            i += 1
+        End While
+        satir.Add(hucre.ToString().Trim())
+        If satir.Any(Function(x) x.Length > 0) Then sonuc.Add(satir)
         Return sonuc
     End Function
 
@@ -417,6 +510,11 @@ Public NotInheritable Class KalipListeRepository
         Dim yeni As Integer = 0
         Dim guncellenen As Integer = 0
         Dim atlanan As Integer = 0
+        Dim gecersizLok As Integer = 0
+        Dim gecerliLok As New HashSet(Of String)()
+        For Each r As DataRow In Db.Tablo("SELECT Ad FROM Lokasyon").Rows
+            gecerliLok.Add(TrMetin.Katla(Convert.ToString(r("Ad")).Trim()))
+        Next
         Using c As SQLiteConnection = Db.Ac()
             Using tx As SQLiteTransaction = c.BeginTransaction()
                 For i As Integer = 1 To ham.Count - 1
@@ -429,13 +527,19 @@ Public NotInheritable Class KalipListeRepository
                     Using cmd As SQLiteCommand = Db.Komut(c, tx, "SELECT COUNT(*) FROM KalipTanim WHERE Anahtar = ?", TrMetin.Katla(kod))
                         varMi = Convert.ToInt32(cmd.ExecuteScalar()) > 0
                     End Using
-                    Yaz(c, tx, kod, Al(ham(i), iAd), Al(ham(i), iTur), Al(ham(i), iTepe), Al(ham(i), iNot), Al(ham(i), iLok), Al(ham(i), iSahip), Al(ham(i), iRaf), kullanici, False)
+                    Dim lokHucre As String = Al(ham(i), iLok)
+                    If lokHucre IsNot Nothing AndAlso gecerliLok.Count > 0 AndAlso Not gecerliLok.Contains(TrMetin.Katla(lokHucre)) Then
+                        gecersizLok += 1
+                        lokHucre = Nothing
+                    End If
+                    Yaz(c, tx, kod, Al(ham(i), iAd), Al(ham(i), iTur), Al(ham(i), iTepe), Al(ham(i), iNot), lokHucre, Al(ham(i), iSahip), Al(ham(i), iRaf), kullanici, False)
                     If varMi Then guncellenen += 1 Else yeni += 1
                 Next
                 tx.Commit()
             End Using
         End Using
-        Return yeni.ToString() & " yeni kalıp eklendi, " & guncellenen.ToString() & " kalıp güncellendi" & If(atlanan > 0, ", " & atlanan.ToString() & " satır kodu boş olduğu için atlandı.", ".")
+        Return yeni.ToString() & " yeni kalıp eklendi, " & guncellenen.ToString() & " kalıp güncellendi" & If(atlanan > 0, ", " & atlanan.ToString() & " satır kodu boş olduğu için atlandı", "") &
+               If(gecersizLok > 0, "; " & gecersizLok.ToString() & " satırdaki lokasyon, lokasyon listenizde olmadığı için yazılmadı.", ".")
     End Function
 
     ''' <summary>Bir kalıp koduna bağlı kayıt sayıları: Kalıp Takip kaydı, talep satırı, hareket.</summary>

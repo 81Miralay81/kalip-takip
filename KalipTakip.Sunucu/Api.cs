@@ -360,6 +360,14 @@ namespace KalipTakip.Sunucu
                         finally { try { File.Delete(gecici); } catch { } }
                     }
                     return true;
+                case "/api/kl/onar":
+                    YoneticiGerekli(k);
+                    {
+                        bool uygula = Metin(Govde(ctx), "uygula") == "1";
+                        string[] s = KalipListeRepository.VeriOnar(uygula).Split('|');
+                        Json(ctx, 200, new { lokasyon = long.Parse(s[0]), tur = long.Parse(s[1]), uygulandi = uygula });
+                    }
+                    return true;
                 case "/api/kl/excel":
                     Gerekli(k, Izin.KalipListeExcel);
                     CsvGonder(ctx, "kalip_listesi.csv", KalipListeRepository.Ara(Q(ctx, "q"), QTam(ctx, "mod", 0), 0, GorunurBolumler(k), Q(ctx, "alan")), KalipListeRepository.Kolonlar);

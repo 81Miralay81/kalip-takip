@@ -15,7 +15,7 @@ header{position:sticky;top:0;z-index:5;background:linear-gradient(90deg,#2a1d78,
 header h1{font-size:18px;margin:0;flex:1;cursor:pointer}
 header small{color:#d3d9ff;font-size:12px}
 header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:13px;cursor:pointer}
-main{padding:14px;max-width:1500px;margin:0 auto}
+main{padding:14px 18px;max-width:none;margin:0 auto}
 h2{margin:6px 0 12px;font-size:20px}
 h3{margin:14px 0 6px;font-size:15px;color:#c7d2fe}
 .kart{background:var(--kart);border:1px solid var(--kenar);border-radius:14px;padding:14px;margin-bottom:12px}
@@ -39,7 +39,13 @@ button.b:disabled{opacity:.5;cursor:default}
 .pk{border-radius:16px;padding:20px;color:#fff;cursor:pointer;min-height:120px;border:0;text-align:left;font-family:inherit}
 .pk b{font-size:18px;display:block;margin-bottom:6px}
 .pk span{font-size:13px;opacity:.9}
-.tw{overflow:auto;max-height:68vh;border:1px solid var(--kenar);border-radius:12px}
+.tw{overflow:auto;max-height:calc(100vh - 215px);min-height:200px;border:1px solid var(--kenar);border-radius:12px}
+.tbl th{overflow:hidden;text-overflow:ellipsis}
+.tbl.sabit{table-layout:fixed;width:100%}
+.tbl.sabit th.dolgu,.tbl.sabit td.dolgu{padding:0;border-left:0}
+.tbl.sabit td{max-width:none}
+.tbl th .rs{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;touch-action:none;user-select:none}
+.tbl th .rs:hover,.tbl th .rs.tut{background:#7c8cff}
 table.tbl{border-collapse:collapse;width:100%;font-size:13px}
 .tbl th{position:sticky;top:0;background:#2a2f66;text-align:left;padding:8px 10px;white-space:nowrap;z-index:1}
 .tbl td{padding:7px 10px;border-top:1px solid var(--kenar);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
@@ -121,7 +127,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='02.11.2026-Y';
+const SURUM='03.11.2026-Z';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -215,15 +221,38 @@ function hesapla(m){
 function yaz2(d){return (Math.round(d*100)/100).toString().replace('.',',')}
 function sayiMetin(v){return v==null?'':String(v).replace('.',',')}
 
+// Sütun genişlikleri tarayıcıda saklanır (sayfa + sütun listesi başına); başlığın sağ kenarından sürükleyerek değiştirilir.
 function tablo(kolonlar,satirlar,opt){
   opt=opt||{};
+  const anah='kt_kg:'+((location.hash||'').replace('#/','').split('?')[0])+':'+kolonlar.map(k=>k.alan).join(',');
+  let gen={};try{gen=JSON.parse(localStorage.getItem(anah)||'{}')||{}}catch(e){gen={}}
+  const vars=k=>gen[k.alan]||(k.tip==='Tarih'?112:k.tip==='Tam'?96:k.alan==='KalipAdi'?280:150);
   const tb=el('tbody');
   satirlar.forEach((s,i)=>{
-    const tr=el('tr',{onclick:()=>{if(opt.sec)opt.sec(s,tr,i)}},kolonlar.map(k=>el('td',{title:fmt(k.tip,s[k.alan])},fmt(k.tip,s[k.alan]))));
+    const tr=el('tr',{onclick:()=>{if(opt.sec)opt.sec(s,tr,i)}},kolonlar.map(k=>el('td',{title:fmt(k.tip,s[k.alan])},fmt(k.tip,s[k.alan]))).concat([el('td',{class:'dolgu'})]));
     tb.append(tr);
   });
-  if(!satirlar.length)tb.append(el('tr',null,el('td',{colspan:kolonlar.length,style:'color:#9aa3d6'},'Kayıt yok.')));
-  return el('div',{class:'tw',style:opt.stil||''},el('table',{class:'tbl'},el('thead',null,el('tr',null,kolonlar.map(k=>el('th',null,k.baslik)))),tb));
+  if(!satirlar.length)tb.append(el('tr',null,el('td',{colspan:kolonlar.length+1,style:'color:#9aa3d6'},'Kayıt yok.')));
+  const tbl=el('table',{class:'tbl sabit'});
+  const topla=()=>{tbl.style.minWidth=kolonlar.reduce((a,k)=>a+vars(k),0)+'px'};
+  const basliklar=kolonlar.map(k=>{
+    const th=el('th',{style:'width:'+vars(k)+'px',title:k.baslik},k.baslik);
+    const rs=el('span',{class:'rs',title:'Sürükleyerek genişliği değiştirin'});
+    rs.addEventListener('click',e=>e.stopPropagation());
+    rs.addEventListener('pointerdown',e=>{
+      e.preventDefault();e.stopPropagation();
+      try{rs.setPointerCapture(e.pointerId)}catch(x){}
+      const x0=e.clientX,w0=th.offsetWidth;rs.classList.add('tut');
+      const tasi=ev=>{const nw=Math.max(50,Math.round(w0+ev.clientX-x0));gen[k.alan]=nw;th.style.width=nw+'px';topla()};
+      const bitti=()=>{rs.classList.remove('tut');rs.removeEventListener('pointermove',tasi);rs.removeEventListener('pointerup',bitti);rs.removeEventListener('pointercancel',bitti);try{localStorage.setItem(anah,JSON.stringify(gen))}catch(x){}};
+      rs.addEventListener('pointermove',tasi);rs.addEventListener('pointerup',bitti);rs.addEventListener('pointercancel',bitti);
+    });
+    rs.addEventListener('dblclick',e=>{e.stopPropagation();delete gen[k.alan];th.style.width=vars(k)+'px';topla();try{localStorage.setItem(anah,JSON.stringify(gen))}catch(x){}});
+    th.append(rs);return th;
+  });
+  topla();
+  tbl.append(el('thead',null,el('tr',null,basliklar,el('th',{class:'dolgu'}))),tb);
+  return el('div',{class:'tw',style:opt.stil||''},tbl);
 }
 function secIsaretle(tr){const p=tr.parentNode;p.querySelectorAll('tr.sec').forEach(x=>x.classList.remove('sec'));tr.classList.add('sec')}
 
@@ -804,9 +833,9 @@ async function ktIstatistik(bolum0){
 // Kalıp Listesi: arama ölçütü. 0 = kalıp kodu/adı, 1 = raf, 'a:Alan' = başlıktaki sütuna göre
 const KL_ALANLAR=[['KalipTuru','Kalıp türü'],['TepeKodu','Tepe kodu'],['Lokasyon','Lokasyon'],['SahipBolum','Sahip bölüm'],['Durum','Durum (Aktif/Hurda)'],['Notlar','Notlar']];
 const KL_LISTE_ALANLARI=['KalipTuru','SahipBolum','Durum']; // bu başlıklarda değer açılır listeden seçilir
-function klAramaParam(modDeger,q){
+function klAramaParam(modDeger,q,bolum){
   const m=String(modDeger);
-  if(m.indexOf('a:')===0){const a=m.slice(2);return {mod:0,alan:a+(KL_LISTE_ALANLARI.indexOf(a)>=0?'|tam':''),q}}
+  if(m.indexOf('a:')===0){const a=m.slice(2);return {mod:0,alan:a+(KL_LISTE_ALANLARI.indexOf(a)>=0?'|tam':'')+(bolum?'|b:'+bolum:''),q}}
   return {mod:m,q};
 }
 SAYFALAR.kl=function(k){
@@ -814,7 +843,11 @@ SAYFALAR.kl=function(k){
   const mod=sel([{v:'0',t:'Kalıp ile ara'},{v:'1',t:'Raf ile ara'}].concat(KL_ALANLAR.map(a=>({v:'a:'+a[0],t:a[1]+' ile ara'}))),hp.get('alan')?'a:'+hp.get('alan'):'0',{style:'flex:0 0 200px'});
   const q=el('input',{placeholder:'Kalıp kodu veya adı',value:hp.get('q')||''});
   const sonuc=el('div'),bilgi=el('div',{class:'sinir'});
-  let listedekiler=[],yenSira=0;
+  let listedekiler=[],yenSira=0,bolumF=hp.get('bolum')||'';
+  const bolumRozet=el('span',{class:'et',style:'display:none;cursor:pointer',title:'Bölüm süzgecini kaldır'});
+  const rozetGuncelle=()=>{bolumRozet.style.display=bolumF?'':'none';bolumRozet.textContent='Sahip bölüm: '+bolumF+'  ✕'};
+  bolumRozet.onclick=()=>{bolumF='';rozetGuncelle();yenile()};
+  rozetGuncelle();
   const lst=el('select',{style:'flex:1 1 260px;min-width:200px;display:none'});
   const kam=kamDugme(q,()=>yenile());
   async function listeDoldur(){
@@ -840,7 +873,7 @@ SAYFALAR.kl=function(k){
     const sira=++yenSira;
     bilgi.textContent='Aranıyor…';
     try{
-      const j=await api('/api/kalip?'+qs(klAramaParam(mod.value,q.value)));
+      const j=await api('/api/kalip?'+qs(klAramaParam(mod.value,q.value,bolumF)));
       if(sira!==yenSira)return;
       sonuc.innerHTML='';
       listedekiler=j.satirlar.map(x=>x.KalipKodu);
@@ -851,7 +884,7 @@ SAYFALAR.kl=function(k){
   let zaman;q.oninput=()=>{clearTimeout(zaman);zaman=setTimeout(yenile,350)};
   const ipucu=()=>{const m=String(mod.value);q.placeholder=m==='1'?'Raf adı (o rafta bulunan tüm kalıplar)':(m.indexOf('a:')===0?(KL_ALANLAR.find(a=>'a:'+a[0]===m)||[0,''])[1]+' içinde ara (joker: *)':'Kalıp kodu veya adı')};
   ipucu();
-  mod.onchange=()=>{q.value='';ipucu();listeDoldur().then(yenile)};
+  mod.onchange=()=>{q.value='';bolumF='';rozetGuncelle();ipucu();listeDoldur().then(yenile)};
   q.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(zaman);yenile()}};
   const dosya=el('input',{type:'file',accept:'.xlsx,.csv,.txt',style:'display:none',onchange:async()=>{
     const f=dosya.files[0];if(!f)return;
@@ -864,14 +897,22 @@ SAYFALAR.kl=function(k){
     el('div',{class:'arac'},mod,q,lst,kam,
       izin('kl_ekle')&&el('button',{class:'b yesil',onclick:()=>klTanim(null,yenile)},'+ Yeni kalıp'),
       izin('kl_ekle')&&el('button',{class:'b',onclick:()=>dosya.click()},'Excel / CSV yükle'),
-      izin('kl_excel')&&el('button',{class:'b gri',onclick:()=>indir('/api/kl/excel?'+qs(klAramaParam(mod.value,q.value)),'kalip_listesi.csv')},'Excel\'e aktar'),
+      izin('kl_excel')&&el('button',{class:'b gri',onclick:()=>indir('/api/kl/excel?'+qs(klAramaParam(mod.value,q.value,bolumF)),'kalip_listesi.csv')},'Excel\'e aktar'),
+      ME.admin&&el('button',{class:'b gri',title:'Eski hatalı yüklemelerden kalan geçersiz lokasyonları ve bozuk tür adlarını (1"" DÖVME gibi) düzeltir',onclick:async()=>{
+        try{
+          const o=await api('/api/kl/onar',{uygula:'0'});
+          if(!o.lokasyon&&!o.tur){bildir('Onarılacak bir şey bulunamadı.','t');return}
+          if(!confirm('Lokasyon listenizde olmayan '+o.lokasyon+' kalıp lokasyonu boşaltılacak ve '+o.tur+' kayıttaki bozuk kalıp türü adı düzeltilecek. Devam edilsin mi?'))return;
+          const s=await api('/api/kl/onar',{uygula:'1'});await metaYenile();bildir(s.lokasyon+' lokasyon boşaltıldı, '+s.tur+' tür adı düzeltildi.','t');yenile();
+        }catch(e){bildir(e.message,'h')}
+      }},'🔧 Verileri onar'),
       ME.admin&&el('button',{class:'b kirmizi',title:'Ekrandaki kalıplardan Kalıp Takip kaydı, talep geçmişi ya da hareketi olmayanları siler',onclick:async()=>{
         if(!listedekiler.length){bildir('Önce silinecek kalıpları listeleyin (arama yapın).','h');return}
         if(!confirm('Ekrandaki '+listedekiler.length+' kalıptan hiçbir kaydı/geçmişi olmayanlar silinecek; kaydı olanlara dokunulmaz. Devam edilsin mi?'))return;
         try{const j=await api('/api/kl/temizsil',{kodlar:listedekiler});await metaYenile();bildir(j.mesaj,'t');yenile()}catch(e){bildir(e.message,'h')}
       }},'🗑 Kaydı olmayanları sil'),dosya),
     el('div',{class:'sinir'},'Yükleme dosyasında başlıklar: Kalıp Kodu (zorunlu), Kalıp Adı, Kalıp Türü, Tepe Kodu, Lokasyon, Raf, Sahip Bölüm, Notlar.'),
-    bilgi,sonuc);
+    el('div',{class:'arac',style:'margin:2px 0 6px'},bilgi,bolumRozet),sonuc);
   listeDoldur().then(yenile);
 };
 
@@ -1677,7 +1718,7 @@ SAYFALAR.turler=async function(k){
             if(s.Kullanim>0&&!await onay(s.Kullanim+' kayıttaki "'+s.Deger+'" değeri "'+i.value.trim()+'" olarak güncellenecek. Devam edilsin mi?'))return;
             try{const r=await api('/api/liste/ad',{grup,eski:s.Deger,yeni:i.value.trim(),bolum:hb});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
           }},'Adı değiştir'),
-          grup==='KalipTuru'&&s.Kullanim>0?el('button',{class:'b gri',type:'button',style:'padding:4px 10px',title:'Bu türdeki kalıpları Kalıp Listesi\'nde göster',onclick:()=>{location.hash='#/kl?alan=KalipTuru&q='+encodeURIComponent(s.Deger)}},'Kalıpları göster'):null,
+          grup==='KalipTuru'&&s.Kullanim>0?el('button',{class:'b gri',type:'button',style:'padding:4px 10px',title:'Bu türdeki kalıpları Kalıp Listesi\'nde göster',onclick:()=>{location.hash='#/kl?alan=KalipTuru&q='+encodeURIComponent(s.Deger)+(hb?'&bolum='+encodeURIComponent(hb):'')}},'Kalıpları göster'):null,
           el('button',{class:'b kirmizi',type:'button',style:'padding:4px 10px',title:s.Kullanim>0?'Değeri kayıtlardan da temizleyip listeden kaldır':'Sil',onclick:async()=>{
             const yol=s.Kullanim>0?'/api/liste/temizle':'/api/liste/sil';
             if(!await onay(s.Kullanim>0?'"'+s.Deger+'" değeri '+s.Kullanim+' kayıtta kullanılıyor. Bu kayıtlardaki alan BOŞALTILIP değer listeden kaldırılacak (kalıp kayıtları silinmez). Devam edilsin mi?':'"'+s.Deger+'" listeden silinsin mi?'))return;
@@ -1691,7 +1732,7 @@ SAYFALAR.turler=async function(k){
       try{const r=await api('/api/liste/ekle',{grup,deger:yeni.value.trim(),bolum:grup==='KalipTuru'?bolum:''});await metaYenile();bildir(r.mesaj,'t');yukle()}catch(e){bildir(e.message,'h')}
     }},'+ Ekle')));
   }
-  k.append(el('h2',null,'Kalıp ve Kayıt Türleri'),ust,bolKutu,el('div',{class:'kart',style:'max-width:760px'},icerik));
+  k.append(el('h2',null,'Kalıp ve Kayıt Türleri'),ust,bolKutu,el('div',{class:'kart',style:'max-width:1200px'},icerik));
   await yukle();
 };
 
