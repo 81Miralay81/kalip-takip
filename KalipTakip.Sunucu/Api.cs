@@ -365,7 +365,7 @@ namespace KalipTakip.Sunucu
                     {
                         bool uygula = Metin(Govde(ctx), "uygula") == "1";
                         string[] s = KalipListeRepository.VeriOnar(uygula).Split('|');
-                        Json(ctx, 200, new { lokasyon = long.Parse(s[0]), tur = long.Parse(s[1]), uygulandi = uygula });
+                        Json(ctx, 200, new { lokasyon = long.Parse(s[0]), tur = long.Parse(s[1]), tip = long.Parse(s[2]), kalan = long.Parse(s[3]), uygulandi = uygula });
                     }
                     return true;
                 case "/api/kl/excel":

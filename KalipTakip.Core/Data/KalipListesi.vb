@@ -169,7 +169,63 @@ Public NotInheritable Class KalipListeRepository
                 End If
             Next
         Next
-        Return lokSay.ToString() & "|" & turSay.ToString()
+        ' Türü listede olmayan kalıplar (ör. parça adı yazılmış): kod sonundaki numaraya göre atanır (-1 -> "1" ..., -2 -> "2" ..., -3 -> "3" ...)
+        Dim tipSay As Long = 0
+        Dim kalan As Long = 0
+        Dim gecerli As New HashSet(Of String)()
+        Dim numTur As New Dictionary(Of String, String)()
+        Dim rxN As New System.Text.RegularExpressions.Regex("^""(\d+)""")
+        Dim rxS As New System.Text.RegularExpressions.Regex("-(?:[A-Za-z]+-)?(\d+)$")
+        For Each r As DataRow In Db.Tablo("SELECT Deger FROM Liste WHERE Grup = 'KalipTuru' ORDER BY Sira, Id").Rows
+            Dim d As String = Convert.ToString(r("Deger")).Trim()
+            gecerli.Add(TrMetin.Katla(d))
+            Dim mm As System.Text.RegularExpressions.Match = rxN.Match(d)
+            If mm.Success AndAlso Not numTur.ContainsKey(mm.Groups(1).Value) Then numTur(mm.Groups(1).Value) = d
+        Next
+        If gecerli.Count > 0 AndAlso numTur.Count > 0 Then
+            Dim hedefler As New Dictionary(Of String, List(Of String()))()
+            For Each r As DataRow In Ara("", 0, 0, Nothing).Rows
+                Dim tur As String = If(IsDBNull(r("KalipTuru")), "", Convert.ToString(r("KalipTuru")).Trim())
+                If gecerli.Contains(TrMetin.Katla(tur)) Then Continue For
+                Dim kod As String = Convert.ToString(r("KalipKodu"))
+                Dim m As System.Text.RegularExpressions.Match = rxS.Match(kod.Trim())
+                If m.Success AndAlso numTur.ContainsKey(m.Groups(1).Value) Then
+                    Dim hedef As String = numTur(m.Groups(1).Value)
+                    If Not hedefler.ContainsKey(hedef) Then hedefler(hedef) = New List(Of String())()
+                    hedefler(hedef).Add(New String() {Convert.ToString(r("Anahtar")), kod.Trim()})
+                    tipSay += 1
+                Else
+                    kalan += 1
+                End If
+            Next
+            If uygula AndAlso tipSay > 0 Then
+                Using c As SQLiteConnection = Db.Ac()
+                    Using tx As SQLiteTransaction = c.BeginTransaction()
+                        For Each kv As KeyValuePair(Of String, List(Of String())) In hedefler
+                            For Each cift As String() In kv.Value
+                                Using cmd As SQLiteCommand = Db.Komut(c, tx, "INSERT INTO KalipTanim (Anahtar, KalipKodu, KalipTuru) VALUES (?, ?, ?) ON CONFLICT(Anahtar) DO UPDATE SET KalipTuru = excluded.KalipTuru", cift(0), cift(1), kv.Key)
+                                    cmd.ExecuteNonQuery()
+                                End Using
+                            Next
+                            For bas As Integer = 0 To kv.Value.Count - 1 Step 300
+                                Dim parcaListe As List(Of String()) = kv.Value.Skip(bas).Take(300).ToList()
+                                Dim prm As New List(Of Object)()
+                                prm.Add(kv.Key)
+                                For Each cift As String() In parcaListe
+                                    prm.Add(cift(0))
+                                Next
+                                Dim yer As String = String.Join(",", parcaListe.Select(Function(x) "?"))
+                                Using cmd As SQLiteCommand = Db.Komut(c, tx, "UPDATE Kalip SET KalipTuru = ? WHERE KATLA(ParcaKodu) IN (" & yer & ")", prm.ToArray())
+                                    cmd.ExecuteNonQuery()
+                                End Using
+                            Next
+                        Next
+                        tx.Commit()
+                    End Using
+                End Using
+            End If
+        End If
+        Return lokSay.ToString() & "|" & turSay.ToString() & "|" & tipSay.ToString() & "|" & kalan.ToString()
     End Function
 
     ''' <summary>Arama kutusundaki açılır liste için benzersiz değerler (şu an: KalipTuru = kalıp tanımı + Kalıp Takip kayıtları + yönetim listesi).</summary>

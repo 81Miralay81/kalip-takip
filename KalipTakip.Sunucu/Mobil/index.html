@@ -127,7 +127,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='03.11.2026-Z';
+const SURUM='03.11.2026-Z2';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -901,9 +901,9 @@ SAYFALAR.kl=function(k){
       ME.admin&&el('button',{class:'b gri',title:'Eski hatalı yüklemelerden kalan geçersiz lokasyonları ve bozuk tür adlarını (1"" DÖVME gibi) düzeltir',onclick:async()=>{
         try{
           const o=await api('/api/kl/onar',{uygula:'0'});
-          if(!o.lokasyon&&!o.tur){bildir('Onarılacak bir şey bulunamadı.','t');return}
-          if(!confirm('Lokasyon listenizde olmayan '+o.lokasyon+' kalıp lokasyonu boşaltılacak ve '+o.tur+' kayıttaki bozuk kalıp türü adı düzeltilecek. Devam edilsin mi?'))return;
-          const s=await api('/api/kl/onar',{uygula:'1'});await metaYenile();bildir(s.lokasyon+' lokasyon boşaltıldı, '+s.tur+' tür adı düzeltildi.','t');yenile();
+          if(!o.lokasyon&&!o.tur&&!o.tip){bildir('Onarılacak bir şey bulunamadı.'+(o.kalan?' ('+o.kalan+' kalıbın türü listede yok ama kod sonundan tahmin edilemiyor; Excel ile düzeltin.)':''),'t');return}
+          if(!confirm('• Lokasyon listenizde olmayan '+o.lokasyon+' kalıp lokasyonu boşaltılacak\n• '+o.tur+' kayıttaki bozuk tür adı (1"" gibi) düzeltilecek\n• Türü listede olmayan (ör. parça adı yazılmış) '+o.tip+' kalıbın türü, kod sonundaki numaraya göre atanacak (-1 → "1" DÖVME, -2 → "2" ÇAPAK KESME, -3 → "3" BASKI)'+(o.kalan?'\n• '+o.kalan+' kalıba dokunulmayacak (kod sonundan tür çıkarılamıyor)':'')+'\n\nDevam edilsin mi?'))return;
+          const s=await api('/api/kl/onar',{uygula:'1'});await metaYenile();bildir(s.lokasyon+' lokasyon boşaltıldı, '+s.tur+' tür adı düzeltildi, '+s.tip+' kalıba tür atandı.','t');yenile();
         }catch(e){bildir(e.message,'h')}
       }},'🔧 Verileri onar'),
       ME.admin&&el('button',{class:'b kirmizi',title:'Ekrandaki kalıplardan Kalıp Takip kaydı, talep geçmişi ya da hareketi olmayanları siler',onclick:async()=>{

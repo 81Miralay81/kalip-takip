@@ -22,3 +22,6 @@ SÜRÜM Z (03.11.2026)
 - "Kalıpları göster" artık yalnız seçili bölümün kalıplarını getirir (üstte rozet, ✕ ile kaldırılır).
 - Tüm sayfalar ekranı doldurur (1500px sınırı kalktı), tablolar ekran yüksekliğine sığar.
 - Tablo sütunları başlığın sağ kenarından sürüklenerek genişletilir/daraltılır; genişlikler tarayıcıda saklanır (çift tıklama = varsayılan).
+
+SÜRÜM Z2 (03.11.2026)
+- "🔧 Verileri onar": türü listede olmayan kalıplara (ör. kalıp türü yerine parça adı yazılmış olanlar) kod sonundaki numaraya göre tür atar: -1 -> "1" DÖVME KALIBI, -2 -> "2" ÇAPAK KESME KALIBI, -3 -> "3" BASKI KALIBI (-K-1, -C-1 gibi ara harfliler de dahil). Önce sayıyı gösterir, onay ister; kodu tahmin edilemeyenlere dokunmaz.
