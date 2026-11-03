@@ -392,14 +392,14 @@ Public NotInheritable Class KalipRepository
         Dim baslik As List(Of String) = ham(0).Select(Function(h) YNorm(h)).ToList()
         Dim iId As Integer = baslik.IndexOf("id")
         If iId < 0 Then Throw New InvalidDataException("'ID' sütunu bulunamadı. Önce Kalıp Takip'ten 'Excel'e aktar' ile dosyayı indirin, onu düzenleyip yükleyin; ID sütununu silmeyin.")
-        Dim kolonlar As New List(Of KeyValuePair(Of KolonTanimi, Integer))()
+        Dim eslesen As New List(Of KeyValuePair(Of KolonTanimi, Integer))()
         For Each kd As KolonTanimi In Kolonlar
             If kd.Alan = "Id" OrElse kd.Alan = "Hafta" OrElse kd.Alan = "ToplamZaman" Then Continue For
             Dim kdYerel As KolonTanimi = kd
             Dim idx As Integer = baslik.FindIndex(Function(h) h = YNorm(kdYerel.Baslik) OrElse h = YNorm(kdYerel.Alan))
-            If idx >= 0 Then kolonlar.Add(New KeyValuePair(Of KolonTanimi, Integer)(kd, idx))
+            If idx >= 0 Then eslesen.Add(New KeyValuePair(Of KolonTanimi, Integer)(kd, idx))
         Next
-        If Not kolonlar.Any(Function(x) x.Key.Alan = "ParcaKodu") Then Throw New InvalidDataException("'Parça Kodu' sütunu bulunamadı.")
+        If Not eslesen.Any(Function(x) x.Key.Alan = "ParcaKodu") Then Throw New InvalidDataException("'Parça Kodu' sütunu bulunamadı.")
 
         Dim mevcut As New Dictionary(Of Integer, DataRow)()
         For Each r As DataRow In Db.Tablo("SELECT " & SecimListesi & " FROM Kalip").Rows
@@ -444,7 +444,7 @@ Public NotInheritable Class KalipRepository
                 k = New Kalip()
             End If
             Dim hatali As Boolean = False
-            For Each kv As KeyValuePair(Of KolonTanimi, Integer) In kolonlar
+            For Each kv As KeyValuePair(Of KolonTanimi, Integer) In eslesen
                 Dim v As String = If(kv.Value < satir.Count, satir(kv.Value), "")
                 Dim h As Boolean = False
                 YAta(k, kv.Key.Alan, v, h)
