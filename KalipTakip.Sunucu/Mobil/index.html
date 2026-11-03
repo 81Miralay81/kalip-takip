@@ -136,7 +136,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='03.11.2026-Z7';
+const SURUM='03.11.2026-Z8';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -645,7 +645,7 @@ async function kritikUyari(){
           d==='kalsin'?el('span',{class:'et',style:'background:#134e4a;color:#5eead4'},'Kalacak'):
           [el('button',{class:'b gri',type:'button',style:'padding:4px 10px',onclick:()=>{karar[u.id+'|'+z.anahtar]='kalsin';ciz()}},'Kalsın'),
            el('button',{class:'b kirmizi',type:'button',style:'padding:4px 10px',onclick:async()=>{
-             try{await api('/api/kritik/geri',{id:u.id,anahtar:z.anahtar});karar[u.id+'|'+z.anahtar]='geri';ciz();bildir(u.ad+': yetki geri alındı.','t')}catch(e){bildir(e.message,'h')}
+             try{await api('/api/kritik/geri',{id:u.id,anahtar:z.anahtar});karar[u.id+'|'+z.anahtar]='geri';(window.__geriAlinan=window.__geriAlinan||{})[u.id+'|'+z.anahtar]=1;try{window.__izinDeg&&window.__izinDeg(u.id,z.anahtar)}catch(_){}ciz();bildir(u.ad+': yetki geri alındı.','t')}catch(e){bildir(e.message,'h')}
            }},'Geri al')]));
       });
       kutu.append(kart);
@@ -2015,12 +2015,17 @@ SAYFALAR.kul=async function(k){
       const sy=el('span',{class:'sy'});sayaclar[g]=sy;
       const lbl=[];
       ME.tanimlar.filter(t=>t.grup===g).forEach(t=>{
-        const c=el('input',{type:'checkbox',checked:s?s.izinler.indexOf(t.anahtar)>=0:false,onchange:uygula});
+        const c=el('input',{type:'checkbox',checked:s?(s.izinler.indexOf(t.anahtar)>=0&&!(window.__geriAlinan&&window.__geriAlinan[s.id+'|'+t.anahtar])):false,onchange:uygula});
         kutular[t.anahtar]=c;lbl.push(el('label',null,c,t.ad));
       });
       izKutu.append(ac(g,sy,...lbl));
     });
     adm.onchange=uygula;uygula();
+    window.__izinDeg=(id,an)=>{
+      if(!s||s.id!==id||!kutular[an])return;
+      const i=s.izinler.indexOf(an);if(i>=0)s.izinler.splice(i,1);
+      kutular[an].checked=false;uygula();
+    };
     if(s&&s.admin)ME.tanimlar.forEach(t=>kutular[t.anahtar].checked=true);sayacYaz();
     const hata=el('div');
     form.append(el('h3',{style:'margin-top:0'},s?s.ad+' - düzenle':'Yeni kullanıcı'),veriListe('dlBol',ME.bolumler),

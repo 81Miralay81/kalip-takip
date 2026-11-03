@@ -50,3 +50,5 @@ SÜRÜM Z5-Z6 (03.11.2026)
 - Cihaz kontrolü artık varsayılan AÇIK (ayar hiç yazılmamışsa). Daha önce giriş yapmış cihazlar zaten "Onaylı" kayıtlıdır.
 
 Sürüm Z7: Kullanıcı formunda Bölümler, Bildirim ve her yetki grubu açılır pencere (başlıkta seçili/toplam sayısı); varsayılan kapalı.
+
+Sürüm Z8: Kritik uyarıdan "Geri al" yapılınca açık kullanıcı formundaki kutu da anında kalkar.
