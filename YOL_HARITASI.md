@@ -5,19 +5,19 @@ Geriye dönük bir düzeltme gerektiğinde önce buraya bakılır: hangi adımda
 
 - Depo: `81Miralay81/kalip-takip` (özel — herkese kapalı). **Veritabanı (.db) GitHub'a konmaz.**
 - Veritabanı: `\\KALIPNAS2019\kaliphanenas\OMUR\takip\KalipTakip.db` (günlük otomatik yedek: `Yedek\KalipTakip_yyyyMMdd.db`, son 14).
-- Derleme: GitHub Actions ("Derle") → "KalipTakip" paketi (Sunucu + masaüstü exe). Her sürümün git etiketi: `surum-<ad>` (örn. `surum-Z14`).
+- Derleme: GitHub Actions ("Derle") → "KalipTakip" paketi (Sunucu + masaüstü exe). Her sürümün **commit kodu** aşağıdaki tabloda yazılıdır (git etiketi bu ortamdan gönderilemedi; commit kodu aynı işi görür).
 - Sürüm damgası tarayıcıda üst köşede görünür (örn. `03.11.2026-Z14`).
 
 ## Çalışma kuralları (kararlaştırılan)
 1. Eskiyi bozmadan üzerine ekle.
 2. Önce tarayıcı portalı; masaüstü exe geride kalabilir (aynı veritabanını kullanır).
 3. Kritik işlemler (silme, toplu yükleme) ayrı yetkidir; yönetici her girişte kritik yetki taşıyanları görür.
-4. Her değişiklikte: bu dosya + `OKU_BENI.txt` güncellenir, commit atılır, sürüm etiketi konur.
+4. Her değişiklikte: bu dosya + `OKU_BENI.txt` güncellenir, commit atılır, commit kodu tabloya yazılır.
 5. Derleme kırmızıysa önce Actions günlüğü okunup düzeltilir; "tam paket" kurulur (dosya dosya değil).
 
 ## Geri dönüş (bir şey bozulursa)
-- Hangi sürümde bozulduğunu aşağıdaki tablodan bulun → etiketi/commit'i not alın.
-- Sadece o değişikliği geri almak: `git revert <commit>`; komple eski sürüme bakmak: `git checkout surum-<ad>`.
+- Hangi sürümde bozulduğunu aşağıdaki tablodan bulun → commit kodunu not alın.
+- Sadece o değişikliği geri almak: `git revert <commit>`; komple eski sürüme bakmak: `git checkout <commit>`. Sürüm sürüm hazır paketler GitHub Actions çalışma geçmişinde de durur (yeşil olanlar).
 - Veriler (.db) bu işlemlerden etkilenmez; veri bozulduysa `Yedek\` klasöründeki günlük yedeğe dönülür.
 - Şema (tablo) değişiklikleri `Sema.vb` içinde korumalı ve tek seferliktir (bayraklı); geri alınan sürümde eklenen yeni tablo/sütunlar zararsız kalır.
 
@@ -67,7 +67,7 @@ Geriye dönük bir düzeltme gerektiğinde önce buraya bakılır: hangi adımda
 | 22 | 03.11 | Z13 | `5a42013` | İstatistik: **hafta/yıl araması** (yazdıkça 42/2026 önerisi, `/api/kt/haftalar`) | ✅ |
 | 23 | 03.11 | — | `ae80270` | **Derleme hatası düzeltildi** (VB'de yerel `kolonlar` ile `Kolonlar` çakışması, BC30311). Z10–Z13 arası 4 derleme bu yüzden kırmızıydı; ilk yeşil derleme bu | ✅ |
 | 24 | 03.11 | Z14 | `38ae1af` | **"İşleniyor" göstergesi** (üst çubuk + yazı + düğmede dönen simge, çift tıklama kilidi); Kalıp Takip aramasında `(boş)` ile boş alanlar; İstatistik düzeni (Bölüm/Getir alt satıra) | ✅ derleme başarılı |
-| 25 | 05.11 | — | (bu commit) | Yol haritası, `CLAUDE.md` çalışma kuralı, sürüm etiketleri | ✅ |
+| 25 | 05.11 | — | `7545330` | Yol haritası (bu dosya) ve `CLAUDE.md` çalışma kuralı | ✅ |
 
 > Ayrıntılı açıklamalar her sürüm için `OKU_BENI.txt` içindedir.
 
