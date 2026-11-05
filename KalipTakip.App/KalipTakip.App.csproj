@@ -34,6 +34,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\logo.png" LogicalName="logo.png" />
     <EmbeddedResource Include="Resources\uygulama.ico" LogicalName="uygulama.ico" />
+    <EmbeddedResource Include="Resources\kanatix.png" LogicalName="kanatix.png" />
   </ItemGroup>
 
 </Project>

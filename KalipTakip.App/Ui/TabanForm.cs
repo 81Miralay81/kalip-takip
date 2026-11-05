@@ -200,6 +200,36 @@ namespace KalipTakip.Arayuz
             {
                 g.FillEllipse(b3, r.Width - 260, r.Height - 240, 360, 360);
             }
+            // Sağ alt köşede küçük, silik Kanatix işareti (içerik üstüne binmez, tıklamayı engellemez)
+            Image isaret = KanatixIsaret;
+            if (isaret != null && r.Width > 120 && r.Height > 120)
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(isaret, new Rectangle(r.Width - 26, r.Height - 26, 18, 18));
+            }
+        }
+
+        private static Image _kanatix;
+        private static bool _kanatixDenendi;
+        /// <summary>Gömülü kanatix.png (saydamlığı dosyanın içinde). Bulunamazsa null; pencere yine çalışır.</summary>
+        private static Image KanatixIsaret
+        {
+            get
+            {
+                if (!_kanatixDenendi)
+                {
+                    _kanatixDenendi = true;
+                    try
+                    {
+                        using (System.IO.Stream s = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("kanatix.png"))
+                        {
+                            if (s != null) _kanatix = new Bitmap(Image.FromStream(s));
+                        }
+                    }
+                    catch { _kanatix = null; }
+                }
+                return _kanatix;
+            }
         }
 
         // ------------------------------------------------ yardımcılar (alt formlar kullanır)

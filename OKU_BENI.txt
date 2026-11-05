@@ -62,3 +62,11 @@ Sürüm Z12: İstatistikte tablo satırı seçilince grafikler o kalıp türüne
 Sürüm Z13: İstatistik penceresinde Hafta/yıl araması (yazdıkça 42/2026 gibi seçenekler; /api/kt/haftalar).
 
 Sürüm Z14: Tüm arama/düğmelerde işleniyor göstergesi (üst çubuk, düğmede dönen simge); Kalıp Takip aramasında "(boş)" ile boş alanlar; İstatistik düzeni.
+
+SÜRÜM Z15 (05.11.2026)
+- Kanatix işareti: tüm masaüstü pencerelerinin ve tarayıcı portalının sağ alt köşesine küçük, silik bir kanat-X işareti eklendi.
+  Masaüstü: TabanForm zemine çizer (Resources\kanatix.png, gömülü). İçerik üstüne binmez, tıklamayı engellemez.
+  Tarayıcı: sayfanın sonunda #kxIsaret (16 px, %28 saydam, pointer-events:none).
+- Neden: kullanıcı yazdığı bütün yazılımlar için ortak marka adı olarak Kanatix'i seçti. Kalıp Takip şirket yazılımı olduğu için
+  uygulama adı, simgesi ve başlıkları değişmedi; yalnızca fark edilmeyecek kadar küçük bir işaret kondu.
+- Veritabanı ve ayarlar etkilenmez.

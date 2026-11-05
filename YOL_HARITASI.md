@@ -68,6 +68,7 @@ Geriye dönük bir düzeltme gerektiğinde önce buraya bakılır: hangi adımda
 | 23 | 03.11 | — | `ae80270` | **Derleme hatası düzeltildi** (VB'de yerel `kolonlar` ile `Kolonlar` çakışması, BC30311). Z10–Z13 arası 4 derleme bu yüzden kırmızıydı; ilk yeşil derleme bu | ✅ |
 | 24 | 03.11 | Z14 | `38ae1af` | **"İşleniyor" göstergesi** (üst çubuk + yazı + düğmede dönen simge, çift tıklama kilidi); Kalıp Takip aramasında `(boş)` ile boş alanlar; İstatistik düzeni (Bölüm/Getir alt satıra) | ✅ derleme başarılı |
 | 25 | 05.11 | — | `7545330` | Yol haritası (bu dosya) ve `CLAUDE.md` çalışma kuralı | ✅ |
+| 26 | 05.11 | Z15 | `(bekliyor)` | **Kanatix işareti**: masaüstü pencerelerde (TabanForm) ve tarayıcı portalında sağ alt köşede küçük, silik işaret (16–18 px, ~%30 saydam, tıklamayı engellemez). Neden: kullanıcı yazılımları için ortak marka Kanatix'i seçti; şirket yazılımı olduğu için yalnız fark edilmeyecek kadar küçük işaret. Uygulama adı/simgesi bilerek DEĞİŞMEDİ | ⏳ derleme |
 
 > Ayrıntılı açıklamalar her sürüm için `OKU_BENI.txt` içindedir.
 
