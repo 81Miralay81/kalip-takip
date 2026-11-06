@@ -13,7 +13,6 @@ jobs:
       - name: Derle (Release)
         run: dotnet build KalipTakip.sln -c Release
       - name: SQL Server sinamasi (LocalDB)
-        continue-on-error: true
         shell: pwsh
         run: |
           sqllocaldb start MSSQLLocalDB

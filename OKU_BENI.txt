@@ -70,3 +70,15 @@ SÜRÜM Z15 (05.11.2026)
 - Neden: kullanıcı yazdığı bütün yazılımlar için ortak marka adı olarak Kanatix'i seçti. Kalıp Takip şirket yazılımı olduğu için
   uygulama adı, simgesi ve başlıkları değişmedi; yalnızca fark edilmeyecek kadar küçük bir işaret kondu.
 - Veritabanı ve ayarlar etkilenmez.
+
+SÜRÜM Z16 (06.11.2026)
+- Gizli Ayarlar (yönetici): sunucu ayarları (yapay zeka anahtarları, veritabanı yolu, SQL Server/IFS bağlantı cümleleri) KalipTakipSunucu.exe yanındaki
+  "gizli.ayar" dosyasında şifreli tutulur. Değerleri görmek için yönetici parolası yeniden istenir. "Config'teki değerleri buraya taşı" App.config /
+  exe.config içindeki VeritabaniYolu, GeminiAnahtar, AnthropicAnahtar değerlerini şifreli depoya alıp configten siler.
+  Dosya yalnız aynı Windows kullanıcısıyla açılır; KURTARMA PAROLASI belirleyin (başka bilgisayar/kullanıcıda açmak için; unutulursa açılamaz).
+- Bağlantılar (yönetici): SQL Server bağlantısı + aktarım (SQLite dosyasına dokunmaz). Aktarım satır sayılarını doğrular.
+  Bu sürümde uygulama SQLite ile çalışmaya devam eder; SQL Server'a tam geçiş ayrı adım (Aşama 2).
+- IFS kaynakları: Oracle ya da SQL Server, yalnız SELECT. Sonuç IFS_<ad> tablosuna yazılır; aynı satır tekrar yazılmaz, bir hücre değişirse güncellenir,
+  kaynakta kalmayan satır silinmez "_silindi=1" olur. Otomatik çekme aralığı (5 dk ... günde bir) ve üstte "⟳ Veri çek". IFS'e YAZMA yok.
+- Boş veritabanı kurulumunda yönetici adı ve parolası sorulur (artık sabit ADMIN/1234 değil).
+- GitHub derlemesi LocalDB ile aktarım ve veri çekmeyi sınar (KalipTakipSunucu.exe --sinama).
