@@ -82,3 +82,12 @@ SÜRÜM Z16 (06.11.2026)
   kaynakta kalmayan satır silinmez "_silindi=1" olur. Otomatik çekme aralığı (5 dk ... günde bir) ve üstte "⟳ Veri çek". IFS'e YAZMA yok.
 - Boş veritabanı kurulumunda yönetici adı ve parolası sorulur (artık sabit ADMIN/1234 değil).
 - GitHub derlemesi LocalDB ile aktarım ve veri çekmeyi sınar (KalipTakipSunucu.exe --sinama).
+
+SÜRÜM Z17 (06.11.2026)
+- IFS'e yazma: Bağlantılar > kaynak > "IFS'e yazma". Hedef tablo + anahtar sütun (KalipKodu buraya yazılır) + sütun eşleştirme
+  (bizdeki alanlar: KalipKodu, KalipAdi, KalipTuru, TepeKodu, Notlar, Lokasyon, SahipBolum, Raf, KalipStatu, TashihSayisi, SonTalepNo,
+  SonTalepStatu, SonTalepBolum, SonTalepTarihi, SonDegisiklik, Guncelleme).
+- Kalıp başına tek satır: anahtara göre UPDATE, satır yoksa INSERT. Kalıp Listesi/Talep değişince yaklaşık 30 sn içinde gider.
+- Güvenlik: ilk kullanımda "Temel al" (IFS'e yazmadan şimdiki durumu kaydeder) ya da "Tümünü gönder" yapın; sonra yalnız değişenler gider.
+  Yazma yetkisi olan IFS kullanıcısı gerekir (BT'den isteyin). Hata olursa satır sonraki turda yeniden denenir; günlükte görünür.
+- Veri çekme (IFS->bizde) ve gönderme (bizde->IFS) ayrıdır; "⟳ Veri çek" yalnız IFS'ten okur.

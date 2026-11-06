@@ -161,7 +161,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='06.11.2026-Z16';
+const SURUM='06.11.2026-Z17';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -2057,16 +2057,25 @@ SAYFALAR.baglanti=async function(k){
     const tb=el('tbody');
     d.kaynaklar.forEach(x=>tb.append(el('tr',{style:'cursor:default'},el('td',null,el('b',null,x.ad),el('div',{class:'sinir'},x.tur==='oracle'?'Oracle':'SQL Server')),el('td',null,x.tablo),
       el('td',null,x.aktif?(x.aralikDk?ARALIK.find(a=>a.v==String(x.aralikDk))?.t||x.aralikDk+' dk':'Yalnız elle'):'Pasif'),
-      el('td',{style:'max-width:320px'},el('div',{class:'sinir'},(x.sonCalisma||'').slice(0,16),' ',x.sonSonuc||'')),
-      el('td',null,el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>cek(x.id)},'Çek'),' ',el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>duzenle(x)},'Düzenle'),' ',
+      el('td',{style:'max-width:360px'},x.okuma?el('div',{class:'sinir'},'⬇ ',(x.sonCalisma||'').slice(0,16),' ',x.sonSonuc||''):'',
+        x.yazAktif?el('div',{class:'sinir'},'⬆ ',(x.sonYazma||'').slice(0,16),' ',x.sonYazSonuc||(x.temelVar?'bekliyor':'ÖNCE "Temel al" veya "Tümünü gönder" yapın')):''),
+      el('td',null,x.okuma?el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>cek(x.id)},'Çek'):'',' ',
+        x.yazAktif?[el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>gonder(x,'degisen')},'Gönder'),' ',el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>gonder(x,'temel')},'Temel al'),' ',el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>gonder(x,'tum')},'Tümünü gönder')]:'',' ',el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>duzenle(x)},'Düzenle'),' ',
         el('button',{class:'b kirmizi',style:'padding:2px 10px',onclick:async()=>{if(!confirm(x.ad+' kaynağı silinsin mi? (yerel tablo kalır)'))return;try{await api('/api/vk/sil',{id:x.id});await ifsCiz()}catch(e){bildir(e.message,'h')}}},'Sil')))));
-    ifsKutu.append(el('div',{class:'tw'},el('table',null,el('thead',null,el('tr',null,['Kaynak','Yerel tablo','Otomatik','Son çalışma / sonuç',''].map(h=>el('th',null,h)))),tb)));
+    ifsKutu.append(el('div',{class:'tw'},el('table',null,el('thead',null,el('tr',null,['Kaynak','Yerel tablo','Otomatik','Son çalışma / sonuç (⬇ çekme, ⬆ gönderme)',''].map(h=>el('th',null,h)))),tb)));
   }
   async function cek(id){
     try{const j=await api('/api/vk/cek',{id});bildir(j.mesaj+(j.sonuclar.length?' '+j.sonuclar.map(s=>s.ad+': '+s.sonuc).join(' | '):''),j.sonuclar.some(s=>/^HATA/.test(s.sonuc))?'h':'t');await ifsCiz();await logCiz()}
     catch(e){bildir(e.message,'h')}
   }
-  function duzenle(x){
+  async function gonder(x,mod){
+    const ad={degisen:'Değişenleri şimdi gönder',tum:'TÜM kalıpları IFS tablosuna gönder',temel:'Şimdiki durumu temel al (IFS\'e yazılmaz)'}[mod];
+    if(mod==='tum'&&!confirm('Tüm kalıplar '+x.yazTablo+' tablosuna yazılacak (satır varsa güncellenir, yoksa eklenir). Devam?'))return;
+    const p=await yonParola('IFS\'e gönderme');if(p==null)return;
+    try{const j=await api('/api/vk/gonder',{id:x.id,mod,parola:p});bildir(j.mesaj,j.hata?'h':'t');await ifsCiz();await logCiz()}catch(e){bildir(e.message,'h')}
+  }
+  async function duzenle(x){
+    const alanlar=(await api('/api/vk/alanlar')).alanlar.map(a=>a.ad);
     const yeni=!x;x=x||{tur:'oracle',aralikDk:0,aktif:true,silinenleriIsaretle:true};
     const ad=el('input',{value:x.ad||'',placeholder:'örn. IFS Parça Listesi'}),tur=sel([{v:'oracle',t:'Oracle (IFS genelde bu)'},{v:'sqlserver',t:'SQL Server'}],x.tur);
     const bag=el('input',{type:'password',autocomplete:'new-password',placeholder:x.baglantiVar?'Kayıtlı (değiştirmek için yenisini yazın)':'Oracle: User Id=kul;Password=par;Data Source=//sunucu:1521/IFSPROD   |   SQL Server: Server=..;Database=..;User Id=..;Password=..'});
@@ -2074,16 +2083,34 @@ SAYFALAR.baglanti=async function(k){
     const anahtar=el('input',{value:x.anahtar||'',placeholder:'Satırı tanıtan sütun(lar), virgülle: örn. CONTRACT,PART_NO'}),hedef=el('input',{value:x.hedef||'',placeholder:'Yerel tablo adı (IFS_ öneki otomatik eklenir)'});
     const aralik=sel(ARALIK,String(x.aralikDk||0)),aktif=el('input',{type:'checkbox',checked:!!x.aktif}),sil=el('input',{type:'checkbox',checked:!!x.silinenleriIsaretle});
     const onizle=el('div');
+    const yAktif=el('input',{type:'checkbox',checked:!!x.yazAktif}),yTablo=el('input',{value:x.yazTablo||'',placeholder:'IFS tablosu, örn. KALIP_ARA veya SEMA.KALIP_ARA'}),yAnahtar=el('input',{value:x.yazAnahtar||'',placeholder:'Anahtar sütun (KalipKodu buraya yazılır) örn. KALIP_KODU'}),
+      yBag=el('input',{type:'password',autocomplete:'new-password',placeholder:x.yazBaglantiVar?'Kayıtlı (değiştirmek için yenisini yazın)':'Boşsa yukarıdaki bağlantı kullanılır (yazma yetkili kullanıcı gerekir)'});
+    const esKutu=el('div');
+    function esSatir(e){
+      const h=el('input',{value:e.hedef||'',placeholder:'IFS sütunu',style:'flex:1'}),ks=sel(alanlar,e.kaynak||'', {style:'flex:1'},'-- bizdeki alan --');
+      const r=el('div',{class:'arac',style:'margin:2px 0'},h,el('span',null,'←'),ks,el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>r.remove()},'✕'));
+      r._al=()=>({hedef:h.value,kaynak:ks.value});esKutu.append(r);
+    }
+    (x.yazEslesme||[]).forEach(esSatir);
+    const yazBolum=el('div',{class:'kart',style:'margin-top:10px;border-left:4px solid #f59e0b'},el('h3',{style:'margin-top:0'},'IFS\'e yazma (gönderme)'),
+      el('div',{class:'sinir'},'Kalıp Listesi veya Talep değişince ilgili kalıbın satırı IFS tablosunda güncellenir (yoksa eklenir). Kalıp başına tek satır. Gönderme açılınca ilk iş "Temel al" ya da "Tümünü gönder" yapılmalı; otomatik gönderim bundan sonra yalnız DEĞİŞENLERİ yollar (yaklaşık 30 saniye içinde).'),
+      el('label',{style:'display:flex;align-items:center'},yAktif,'IFS\'e yazmaya izin ver (kaydederken yönetici parolası istenir)'),
+      el('label',null,'Yazılacak IFS tablosu'),yTablo,el('label',null,'Anahtar sütun'),yAnahtar,el('label',null,'Yazma bağlantısı (isteğe bağlı)'),yBag,
+      el('label',null,'Sütun eşleştirme'),esKutu,el('div',{class:'arac'},el('button',{class:'b gri',onclick:()=>esSatir({})},'+ Sütun ekle')));
     const m=modal(yeni?'Yeni kaynak':'Kaynak: '+x.ad,el('div',null,
       el('div',{class:'alan'},el('div',null,el('label',null,'Ad'),ad),el('div',null,el('label',null,'Tür'),tur)),
-      el('label',null,'Bağlantı cümlesi'),bag,el('label',null,'Sorgu (yalnız SELECT)'),sorgu,
+      el('label',null,'Bağlantı cümlesi'),bag,el('label',null,'Sorgu (yalnız SELECT; yalnız yazma yapacaksanız boş bırakın)'),sorgu,
       el('div',{class:'alan'},el('div',null,el('label',null,'Anahtar sütun(lar)'),anahtar),el('div',null,el('label',null,'Yerel tablo adı'),hedef)),
       el('div',{class:'alan'},el('div',null,el('label',null,'Otomatik çekme aralığı'),aralik),
         el('div',null,el('label',{style:'display:flex;align-items:center'},aktif,'Otomatik çekme açık'),el('label',{style:'display:flex;align-items:center'},sil,'Kaynakta kalmayan satırları "silindi" işaretle'))),
       el('div',{class:'arac',style:'margin-top:8px'},
         el('button',{class:'b gri',onclick:async()=>{onizle.innerHTML='';try{const j=await api('/api/vk/test',{id:x.id,tur:tur.value,baglanti:bag.value,sorgu:sorgu.value});
           onizle.append(el('div',{class:'sinir'},'Bağlantı tamam ('+j.surum+'). '+j.sutunlar.length+' sütun: '+j.sutunlar.join(', ')),tablo(j.sutunlar.map((s,i)=>({alan:'c'+i,baslik:s})),j.satirlar.map(r=>{const o={};r.forEach((v,i)=>o['c'+i]=v);return o}),{stil:'max-height:30vh'}))}catch(e){onizle.append(el('div',{class:'hata'},e.message))}}},'Dene (ilk 5 satır)'),
-        el('button',{class:'b yesil',onclick:async()=>{try{await api('/api/vk/kaydet',{id:x.id||'',ad:ad.value,tur:tur.value,baglanti:bag.value,sorgu:sorgu.value,anahtar:anahtar.value,hedef:hedef.value,aralikDk:aralik.value,aktif:aktif.checked,silinenleriIsaretle:sil.checked});m.kapat();await ifsCiz()}catch(e){onizle.innerHTML='';onizle.append(el('div',{class:'hata'},e.message))}}},'Kaydet')),onizle),true);
+        el('button',{class:'b yesil',onclick:async()=>{try{
+          let par='';if(yAktif.checked){par=await yonParola('IFS\'e yazmayı aç');if(par==null)return}
+          await api('/api/vk/kaydet',{id:x.id||'',ad:ad.value,tur:tur.value,baglanti:bag.value,sorgu:sorgu.value,anahtar:anahtar.value,hedef:hedef.value,aralikDk:aralik.value,aktif:aktif.checked,silinenleriIsaretle:sil.checked,
+            yazAktif:yAktif.checked,yazTablo:yTablo.value,yazAnahtar:yAnahtar.value,yazBaglanti:yBag.value,yazEslesme:[...esKutu.children].map(r=>r._al()).filter(e=>e.hedef&&e.kaynak),parola:par});
+          m.kapat();await ifsCiz()}catch(e){onizle.innerHTML='';onizle.append(el('div',{class:'hata'},e.message))}}},'Kaydet')),yazBolum,onizle),true);
   }
   async function logCiz(){
     logKutu.innerHTML='';

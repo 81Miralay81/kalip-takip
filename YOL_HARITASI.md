@@ -70,6 +70,7 @@ Geriye dönük bir düzeltme gerektiğinde önce buraya bakılır: hangi adımda
 | 25 | 05.11 | — | `7545330` | Yol haritası (bu dosya) ve `CLAUDE.md` çalışma kuralı | ✅ |
 | 26 | 05.11 | Z15 | `93f02ad` | **Kanatix işareti**: masaüstü pencerelerde (TabanForm) ve tarayıcı portalında sağ alt köşede küçük, silik işaret (16–18 px, ~%30 saydam, tıklamayı engellemez). Neden: kullanıcı yazılımları için ortak marka Kanatix'i seçti; şirket yazılımı olduğu için yalnız fark edilmeyecek kadar küçük işaret. Uygulama adı/simgesi bilerek DEĞİŞMEDİ | ✅ derleme başarılı |
 | 27 | 06.11 | Z16 | `915b67b` | **Aşama 1 — Gizli ayarlar + Bağlantılar**: (1) şifreli ayar deposu `gizli.ayar` (AES-256 + HMAC, anahtar Windows DPAPI ile korunur, isteğe bağlı kurtarma parolası); Gizli Ayarlar sayfası (maskeli değerler, göstermek için yönetici parolası, config'ten taşı); (2) Bağlantılar sayfası: SQL Server bağlantısı + **SQLite→SQL Server aktarımı** (tam veri ya da boş şema + yönetici); (3) **IFS kaynakları** (Oracle/SQL Server, yalnız SELECT, çoklu kaynak, otomatik çekme aralığı, satır özetiyle değişen/yeni/aynı ayrımı, günlük) + üst çubukta "⟳ Veri çek"; (4) boş veritabanı kurulumunda yönetici adı/parolası artık sorulur; (5) CI: LocalDB ile kendi kendine sınama (`--sinama`). Uygulama hâlâ SQLite ile çalışır | ✅ derleme + SQL Server sınaması başarılı |
+| 28 | 06.11 | Z17 | `COMMIT` | **IFS'e yazma (gönderme)**: Bağlantılar'da kaynak başına yazılacak IFS tablosu, anahtar sütun ve sütun eşleştirme. Kalıp başına tek satır; Kalıp Listesi/Talep değişince (≈30 sn) satır güncellenir, yoksa eklenir. Güvenlik: yazmayı açarken yönetici parolası; otomatik gönderim ancak "Temel al" (göndermeden) ya da "Tümünü gönder" yapıldıktan sonra; yalnız değişenler gider; hatalı satır sonraki turda yeniden denenir. Okuma sorgusu boş bırakılabilir (yalnız yazma). LocalDB sınamasına eklendi | ⏳ derleme bekleniyor |
 
 > Ayrıntılı açıklamalar her sürüm için `OKU_BENI.txt` içindedir.
 
@@ -81,7 +82,7 @@ Geriye dönük bir düzeltme gerektiğinde önce buraya bakılır: hangi adımda
 | A3 | Türler sayfasına "Kalıp sayısı" sütunu | Daha önce önerildi, beklemede | ⏳ |
 | A4 | İstatistikten ilgili kayıtlara geçiş (örn. `(boş)` satırına tıklayıp kayıtları listele) | `(boş)` araması hazır, kısayol yok | ⏳ öneri |
 | A5 | Telegram/e-posta bildirimlerinin sunucuda canlı testi | Şirket ağı Telegram'ı engelliyor; WhatsApp sadece fikir | ⏳ |
-| A6 | IFS: kalıp alanlarının IFS'e **gönderilmesi** (yazma) | Z16'da yalnız ÇEKME var; yazma için alanlar + bağlantı başına açık yazma izni gerekir | ⏳ |
+| A6 | IFS tablosunun gerçek adı/sütunları ve yazma yetkili kullanıcı | Z17 altyapı hazır; IFS tarafından tablo yapısı alınıp Bağlantılar'da eşleştirilecek | ⏳ |
 | A11 | **Aşama 2: uygulamanın tamamı SQL Server'da çalışsın** | ~290 SQLite cümlesi için lehçe katmanı; LocalDB sınamasıyla adım adım | ⏳ |
 | A12 | App.config'teki Gemini anahtarını yenile ve Gizli Ayarlar'a taşı | Özel depoda düz yazılı kalmış | ⏳ acil |
 | A7 | Genel internete açma (onaylı cihaz tekrar sorulmasın) | Güvenlik gözden geçirilecek | ⏳ |

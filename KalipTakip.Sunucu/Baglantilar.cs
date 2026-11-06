@@ -19,6 +19,8 @@ namespace KalipTakip.Sunucu
     /// Değişmeyen satırlar tekrar yazılmaz (satır özeti/hash karşılaştırılır); bir hücre bile değiştiyse o satır güncellenir.
     /// Kaynaktan kaybolan satırlar silinmez, "_silindi = 1" işaretlenir.
     /// </summary>
+    internal sealed class VkEsle { public string hedef { get; set; } public string kaynak { get; set; } }
+
     internal sealed class VkTanim
     {
         public string id { get; set; }
@@ -33,6 +35,14 @@ namespace KalipTakip.Sunucu
         public bool silinenleriIsaretle { get; set; }
         public string sonCalisma { get; set; }
         public string sonSonuc { get; set; }
+        // IFS'e yazma (gönderim): kalıp başına tek satır, anahtara göre güncelle / yoksa ekle
+        public bool yazAktif { get; set; }
+        public string yazBaglanti { get; set; }  // boşsa baglanti kullanılır
+        public string yazTablo { get; set; }
+        public string yazAnahtar { get; set; }   // hedef tablodaki anahtar sütun (KalipKodu buraya yazılır)
+        public List<VkEsle> yazEslesme { get; set; }
+        public string sonYazma { get; set; }
+        public string sonYazSonuc { get; set; }
     }
 
     internal sealed class VkSonuc
@@ -45,7 +55,7 @@ namespace KalipTakip.Sunucu
         }
     }
 
-    internal static class Vk
+    internal static partial class Vk
     {
         private const string Anahtar = "vk.liste";
         private static readonly object Kilit = new object();
@@ -78,7 +88,8 @@ namespace KalipTakip.Sunucu
                 else
                 {
                     if (!baglantiDegisti) t.baglanti = eski.baglanti;
-                    t.sonCalisma = eski.sonCalisma; t.sonSonuc = eski.sonSonuc;
+                    if (string.IsNullOrWhiteSpace(t.yazBaglanti)) t.yazBaglanti = eski.yazBaglanti;
+                    t.sonCalisma = eski.sonCalisma; t.sonSonuc = eski.sonSonuc; t.sonYazma = eski.sonYazma; t.sonYazSonuc = eski.sonYazSonuc;
                     l[l.IndexOf(eski)] = t;
                 }
                 Yaz(l);
@@ -96,12 +107,19 @@ namespace KalipTakip.Sunucu
             if (string.IsNullOrWhiteSpace(t.ad)) throw new ArgumentException("Bağlantıya bir ad verin.");
             if (t.tur != "sqlserver" && t.tur != "oracle") throw new ArgumentException("Tür SQL Server ya da Oracle olmalı.");
             if ((eski == null || baglantiDegisti) && string.IsNullOrWhiteSpace(t.baglanti)) throw new ArgumentException("Bağlantı cümlesi boş olamaz.");
-            t.sorgu = SorguTemizle(t.sorgu);
-            if (string.IsNullOrWhiteSpace(t.anahtar)) throw new ArgumentException("Anahtar sütun(lar) belirtin (satırı tek başına tanıtan sütun, ör. CONTRACT,PART_NO).");
-            string h = (t.hedef ?? "").Trim();
-            if (h.StartsWith("IFS_", StringComparison.OrdinalIgnoreCase)) h = h.Substring(4);
-            if (!Regex.IsMatch(h, "^[A-Za-z][A-Za-z0-9_]{0,40}$")) throw new ArgumentException("Hedef tablo adı harfle başlamalı; yalnız harf, rakam ve alt çizgi (en çok 40 karakter).");
-            t.hedef = h;
+            bool oku = !string.IsNullOrWhiteSpace(t.sorgu);
+            if (!oku && string.IsNullOrWhiteSpace(t.yazTablo)) throw new ArgumentException("Okuma sorgusu (SELECT) ya da yazılacak IFS tablosu girin.");
+            if (oku)
+            {
+                t.sorgu = SorguTemizle(t.sorgu);
+                if (string.IsNullOrWhiteSpace(t.anahtar)) throw new ArgumentException("Anahtar sütun(lar) belirtin (satırı tek başına tanıtan sütun, ör. CONTRACT,PART_NO).");
+                string h = (t.hedef ?? "").Trim();
+                if (h.StartsWith("IFS_", StringComparison.OrdinalIgnoreCase)) h = h.Substring(4);
+                if (!Regex.IsMatch(h, "^[A-Za-z][A-Za-z0-9_]{0,40}$")) throw new ArgumentException("Hedef tablo adı harfle başlamalı; yalnız harf, rakam ve alt çizgi (en çok 40 karakter).");
+                t.hedef = h;
+            }
+            else { t.sorgu = ""; t.anahtar = t.anahtar ?? ""; t.hedef = t.hedef ?? ""; }
+            DogrulaYaz(t);
             if (t.aralikDk < 0) t.aralikDk = 0;
             if (t.aralikDk > 0 && t.aralikDk < 1) t.aralikDk = 1;
         }
@@ -197,6 +215,7 @@ namespace KalipTakip.Sunucu
         /// <summary>Kaynağı yoklar; yeni ve değişen satırları yerel tabloya yazar. Aynı anda tek çekme çalışır.</summary>
         public static VkSonuc Cek(VkTanim t, string yerelBaglanti = null)
         {
+            if (string.IsNullOrWhiteSpace(t.sorgu)) return new VkSonuc();
             lock (CalismaKilidi)
             {
                 Stopwatch sw = Stopwatch.StartNew();
@@ -374,7 +393,7 @@ namespace KalipTakip.Sunucu
             if (Interlocked.Exchange(ref _yoklaniyor, 1) == 1) return;
             try
             {
-                foreach (VkTanim t in Liste().Where(x => x.aktif && x.aralikDk > 0))
+                foreach (VkTanim t in Liste().Where(x => x.aktif && x.aralikDk > 0 && !string.IsNullOrWhiteSpace(x.sorgu)))
                 {
                     DateTime son;
                     if (DateTime.TryParse(t.sonCalisma, CultureInfo.InvariantCulture, DateTimeStyles.None, out son) && (DateTime.Now - son).TotalMinutes < t.aralikDk) continue;
@@ -382,6 +401,7 @@ namespace KalipTakip.Sunucu
                 }
             }
             catch { }
+            try { YazYokla(); } catch { }
             finally { Interlocked.Exchange(ref _yoklaniyor, 0); }
         }
     }

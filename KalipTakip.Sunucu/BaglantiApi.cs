@@ -28,7 +28,10 @@ namespace KalipTakip.Sunucu
             {
                 { "id", t.id }, { "ad", t.ad }, { "tur", t.tur }, { "sorgu", t.sorgu }, { "anahtar", t.anahtar }, { "hedef", t.hedef },
                 { "tablo", Vk.TabloAdi(t) }, { "aralikDk", t.aralikDk }, { "aktif", t.aktif }, { "silinenleriIsaretle", t.silinenleriIsaretle },
-                { "sonCalisma", t.sonCalisma }, { "sonSonuc", t.sonSonuc }, { "baglantiVar", !string.IsNullOrEmpty(t.baglanti) }
+                { "sonCalisma", t.sonCalisma }, { "sonSonuc", t.sonSonuc }, { "baglantiVar", !string.IsNullOrEmpty(t.baglanti) },
+                { "okuma", !string.IsNullOrWhiteSpace(t.sorgu) }, { "yazAktif", t.yazAktif }, { "yazTablo", t.yazTablo }, { "yazAnahtar", t.yazAnahtar },
+                { "yazEslesme", t.yazEslesme ?? new List<VkEsle>() }, { "yazBaglantiVar", !string.IsNullOrEmpty(t.yazBaglanti) },
+                { "sonYazma", t.sonYazma }, { "sonYazSonuc", t.sonYazSonuc }, { "temelVar", t.yazAktif && Vk.TemelSayisi(t.id) > 0 }
             };
         }
 
@@ -97,9 +100,19 @@ namespace KalipTakip.Sunucu
                         {
                             id = Metin(g, "id"), ad = Metin(g, "ad"), tur = Metin(g, "tur"), baglanti = Metin(g, "baglanti"),
                             sorgu = Metin(g, "sorgu"), anahtar = Metin(g, "anahtar"), hedef = Metin(g, "hedef"),
-                            aktif = Dogru(g, "aktif"), silinenleriIsaretle = Dogru(g, "silinenleriIsaretle")
+                            aktif = Dogru(g, "aktif"), silinenleriIsaretle = Dogru(g, "silinenleriIsaretle"),
+                            yazAktif = Dogru(g, "yazAktif"), yazBaglanti = Metin(g, "yazBaglanti"), yazTablo = Metin(g, "yazTablo"), yazAnahtar = Metin(g, "yazAnahtar"),
+                            yazEslesme = new List<VkEsle>()
                         };
+                        object es;
+                        if (g.TryGetValue("yazEslesme", out es) && es is System.Collections.IEnumerable && !(es is string))
+                            foreach (object o in (System.Collections.IEnumerable)es)
+                            {
+                                Dictionary<string, object> d = o as Dictionary<string, object>;
+                                if (d != null) t.yazEslesme.Add(new VkEsle { hedef = Convert.ToString(d.ContainsKey("hedef") ? d["hedef"] : ""), kaynak = Convert.ToString(d.ContainsKey("kaynak") ? d["kaynak"] : "") });
+                            }
                         int dk; int.TryParse(Metin(g, "aralikDk"), NumberStyles.Integer, CultureInfo.InvariantCulture, out dk); t.aralikDk = dk;
+                        if (t.yazAktif) YoneticiParolaDogrula(k, g);   // IFS'e yazmayı açmak için yönetici parolası
                         Vk.Kaydet(t, !string.IsNullOrEmpty(t.baglanti));
                         Json(ctx, 200, new { mesaj = "Kaydedildi." });
                     }
@@ -121,7 +134,7 @@ namespace KalipTakip.Sunucu
                     g = Govde(ctx);
                     {
                         string id = Metin(g, "id");
-                        List<VkTanim> hedefler = Vk.Liste().Where(x => id.Length == 0 ? x.aktif : x.id == id).ToList();
+                        List<VkTanim> hedefler = Vk.Liste().Where(x => !string.IsNullOrWhiteSpace(x.sorgu) && (id.Length == 0 ? x.aktif : x.id == id)).ToList();
                         if (hedefler.Count == 0) { Json(ctx, 200, new { mesaj = "Çekilecek kaynak yok. Önce Bağlantılar'dan bir kaynak ekleyin.", sonuclar = new object[0] }); return true; }
                         List<object> s = new List<object>();
                         foreach (VkTanim t in hedefler) s.Add(new { ad = t.ad, sonuc = Vk.CekVeKaydet(t) });
@@ -129,7 +142,21 @@ namespace KalipTakip.Sunucu
                     }
                     return true;
                 case "/api/vk/ozet":
-                    Json(ctx, 200, new { adet = Vk.Liste().Count(x => x.aktif) });
+                    Json(ctx, 200, new { adet = Vk.Liste().Count(x => x.aktif && !string.IsNullOrWhiteSpace(x.sorgu)) });
+                    return true;
+                case "/api/vk/alanlar":
+                    Json(ctx, 200, new { alanlar = Vk.YazAlanlari.Select(a => new { ad = a.Key, tur = a.Value }).ToList() });
+                    return true;
+                case "/api/vk/gonder":
+                    YoneticiParolaDogrula(k, g = Govde(ctx));
+                    {
+                        string id = Metin(g, "id"), mod = Metin(g, "mod");
+                        if (mod != "tum" && mod != "temel" && mod != "degisen") throw new ArgumentException("Geçersiz gönderim türü.");
+                        VkTanim t = Vk.Liste().FirstOrDefault(x => x.id == id);
+                        if (t == null) throw new ArgumentException("Kaynak bulunamadı.");
+                        string ozet = Vk.GonderVeKaydet(t, mod);
+                        Json(ctx, 200, new { mesaj = ozet, hata = ozet.StartsWith("HATA") });
+                    }
                     return true;
                 case "/api/vk/gunluk":
                     {
