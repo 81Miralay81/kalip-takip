@@ -223,6 +223,7 @@ namespace KalipTakip.Sunucu
 
         private static bool Yonlendir(string yol, Kullanici k, Baglanti ctx)
         {
+            if (BaglantiUclari(yol, k, ctx)) return true;
             if (BildirimUclari(yol, k, ctx)) return true;
             if (AkisUclari(yol, k, ctx)) return true;
             if (CihazUclari(yol, k, ctx)) return true;
@@ -660,7 +661,7 @@ namespace KalipTakip.Sunucu
         // Anahtar ve model App.config'te: AnthropicAnahtar, AnthropicModel. Sunucu bilgisayarının api.anthropic.com'a erişimi olmalı.
         private static string Ayar(string ad)
         {
-            string v = System.Configuration.ConfigurationManager.AppSettings[ad];
+            string v = Gizli.AyarAl(ad);
             return v == null ? "" : v.Trim();
         }
 

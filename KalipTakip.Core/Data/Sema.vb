@@ -22,17 +22,17 @@ Public NotInheritable Class Sema
         End Try
     End Function
 
-    ' Eski veri aktarmadan, boş bir veritabanı kurar ve ADMIN / 1234 yönetici kullanıcısını oluşturur.
-    Public Shared Sub BosKur()
+    ' Eski veri aktarmadan, boş bir veritabanı kurar ve yönetici kullanıcıyı oluşturur (verilmezse ADMIN / 1234).
+    Public Shared Sub BosKur(Optional yoneticiAdi As String = "ADMIN", Optional yoneticiParola As String = "1234")
         Try
             VeritabaniOlustur()
             TablolariKur()
             Yukselt()
             Dim k As New Kullanici()
-            k.KullaniciAdi = "ADMIN"
+            k.KullaniciAdi = If(String.IsNullOrWhiteSpace(yoneticiAdi), "ADMIN", yoneticiAdi.Trim())
             k.IsAdmin = True
             k.Aktif = True
-            KullaniciRepository.Kaydet(k, "1234")
+            KullaniciRepository.Kaydet(k, If(String.IsNullOrEmpty(yoneticiParola), "1234", yoneticiParola))
         Catch
             TablolariSil()
             Throw

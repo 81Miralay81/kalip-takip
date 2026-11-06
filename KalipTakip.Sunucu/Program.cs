@@ -33,8 +33,10 @@ namespace KalipTakip.Sunucu
         private static readonly JavaScriptSerializer Js = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
         private static byte[] _anaSayfa;
 
-        private static int Main()
+        private static int Main(string[] args)
         {
+            if (args != null && args.Length >= 2 && args[0] == "--sinama") return Sinama.Calistir(args[1]);
+            Db.AyarOkuyucu = ad => Gizli.Al(ad);
             Console.OutputEncoding = Encoding.UTF8;
             Console.Title = "Kalıp Takip - Mobil Sunucu";
             Console.WriteLine("Kalıp Takip mobil sunucusu başlatılıyor...");
@@ -53,6 +55,7 @@ namespace KalipTakip.Sunucu
             }
             try { Sema.Yukselt(); } catch (Exception ex) { HataGunlugu.Yaz(ex); }
             Yedek.Baslat();
+            Vk.Baslat();
 
             using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("index.html"))
             using (MemoryStream ms = new MemoryStream())

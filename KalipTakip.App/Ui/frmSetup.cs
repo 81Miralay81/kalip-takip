@@ -167,16 +167,51 @@ namespace KalipTakip.Arayuz
         // Eski dosya olmadan, tamamen boş bir veritabanı kurar; yönetici: ADMIN / 1234 (ilk girişten sonra parolayı değiştirin).
         private void BosKurTiklandi(object sender, EventArgs e)
         {
-            if (!Mesajlar.Soru("Boş bir veritabanı kurulacak:\r\n\r\n" + Db.Yol + "\r\n\r\nYönetici kullanıcı: ADMIN, parola: 1234\r\n\r\nDevam edilsin mi?")) return;
+            if (!Mesajlar.Soru("Boş bir veritabanı kurulacak:\r\n\r\n" + Db.Yol + "\r\n\r\nSonraki adımda yönetici kullanıcı adı ve parolasını belirleyeceksiniz.\r\n\r\nDevam edilsin mi?")) return;
+            string yAd, yParola;
+            if (!YoneticiSor(out yAd, out yParola)) return;
             try
             {
-                Sema.BosKur();
+                Sema.BosKur(yAd, yParola);
                 DialogResult = DialogResult.OK;
             }
             catch (Exception ex)
             {
                 HataGunlugu.Yaz(ex);
                 Mesajlar.Hata("Veritabanı kurulamadı:\r\n\r\n" + Db.AnlasilirMesaj(ex));
+            }
+        }
+
+        // Yönetici kullanıcı adı ve parolası (varsayılan parola kullanılmaz; en az 4 karakter, iki kez girilir).
+        private bool YoneticiSor(out string ad, out string parola)
+        {
+            ad = null; parola = null;
+            using (Form f = new Form())
+            {
+                f.Text = "Yönetici kullanıcı";
+                f.StartPosition = FormStartPosition.CenterParent;
+                f.FormBorderStyle = FormBorderStyle.FixedDialog;
+                f.MaximizeBox = false; f.MinimizeBox = false;
+                f.ClientSize = new Size(360, 230);
+                Label l1 = new Label { Text = "Kullanıcı adı", Left = 16, Top = 14, Width = 320 };
+                TextBox t1 = new TextBox { Text = "ADMIN", Left = 16, Top = 34, Width = 328 };
+                Label l2 = new Label { Text = "Parola (en az 4 karakter)", Left = 16, Top = 66, Width = 320 };
+                TextBox t2 = new TextBox { Left = 16, Top = 86, Width = 328, UseSystemPasswordChar = true };
+                Label l3 = new Label { Text = "Parola (tekrar)", Left = 16, Top = 118, Width = 320 };
+                TextBox t3 = new TextBox { Left = 16, Top = 138, Width = 328, UseSystemPasswordChar = true };
+                Button tamam = new Button { Text = "Kur", Left = 188, Top = 184, Width = 75, DialogResult = DialogResult.OK };
+                Button iptal = new Button { Text = "Vazgeç", Left = 269, Top = 184, Width = 75, DialogResult = DialogResult.Cancel };
+                f.Controls.AddRange(new Control[] { l1, t1, l2, t2, l3, t3, tamam, iptal });
+                f.AcceptButton = tamam; f.CancelButton = iptal;
+                while (true)
+                {
+                    if (f.ShowDialog(this) != DialogResult.OK) return false;
+                    if (t1.Text.Trim().Length == 0) { Mesajlar.Uyari("Kullanıcı adı boş olamaz."); continue; }
+                    if (t2.Text.Length < 4) { Mesajlar.Uyari("Parola en az 4 karakter olmalı."); continue; }
+                    if (t2.Text != t3.Text) { Mesajlar.Uyari("Parolalar aynı değil."); continue; }
+                    ad = t1.Text.Trim(); parola = t2.Text;
+                    return true;
+                }
             }
         }
 

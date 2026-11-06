@@ -161,7 +161,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='05.11.2026-Z15';
+const SURUM='06.11.2026-Z16';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -696,10 +696,21 @@ async function kritikUyari(){
   const pen=modal('⚠ Kritik yetki uyarısı',kutu,true);
   ciz();
 }
+function vkDugme(){
+  const eski=document.getElementById('vkBtn');if(eski)eski.remove();
+  if(!ME||!ME.admin)return;
+  api0('/api/vk/ozet').then(o=>{
+    if(!o.adet||document.getElementById('vkBtn'))return;
+    $('#portalBtn').before(el('button',{id:'vkBtn',onclick:async()=>{
+      try{const j=await api('/api/vk/cek',{id:''});bildir(j.sonuclar.map(s=>s.ad+': '+s.sonuc).join(' | ')||j.mesaj,j.sonuclar.some(s=>/^HATA/.test(s.sonuc))?'h':'t')}catch(e){bildir(e.message,'h')}
+    }},'⟳ Veri çek'));
+  }).catch(()=>{});
+}
 async function basla(){
   await metaYenile();
   $('#giris').style.display='none';$('#uygulama').style.display='';
   $('#kisi').textContent=ME.ad+(ME.bolum?' • '+ME.bolum:'')+'  •  sürüm '+SURUM;
+  vkDugme();
   yonlendir();
   kritikUyari();
 }
@@ -714,7 +725,7 @@ function sayfaYetkisi(ad){
     case 'talep':return izin('talep_gor');
     case 'atama':return izin('kl_ekle');
     case 'hizli':return izin('kl_ekle')||izin('talep_kalip_durum');
-    case 'turler':case 'kul':case 'lok':case 'bildirim':case 'cihaz':return false;
+    case 'turler':case 'kul':case 'lok':case 'bildirim':case 'cihaz':case 'gizli':case 'baglanti':return false;
     default:return true;
   }
 }
@@ -743,6 +754,8 @@ SAYFALAR.portal=function(k){
     ['Kullanıcılar','Kullanıcı, bölüm ve yetki yönetimi','kul','linear-gradient(135deg,#10b981,#0d9488)',ME.admin],
     ['Bölümler ve Lokasyonlar','Bölüm, ana ve alt lokasyonlar','lok','linear-gradient(135deg,#3b82f6,#06b6d4)',ME.admin],
     ['Bildirim Ayarları','Telegram ve e-posta bildirimleri; gönderim kaydı','bildirim','linear-gradient(135deg,#ec4899,#8b5cf6)',ME.admin],
+    ['Bağlantılar','SQL Server aktarımı; IFS tablolarından otomatik veri çekme','baglanti','linear-gradient(135deg,#0ea5e9,#6366f1)',ME.admin],
+    ['Gizli Ayarlar','Şifreli ayarlar: API anahtarı, veritabanı yolu, bağlantı bilgileri','gizli','linear-gradient(135deg,#64748b,#0f172a)',ME.admin],
     ['Cihaz Erişimleri','Hangi telefon / bilgisayar giriş yapabilir: onay, ret, kontrol','cihaz','linear-gradient(135deg,#ef4444,#7c3aed)',ME.admin]
   ].filter(x=>x[4]);
   const rozetKutu=el('div',{style:'max-width:900px'});
@@ -1937,6 +1950,149 @@ SAYFALAR.bildirim=async function(k){
     el('div',{class:'kart',style:'margin-top:12px'},el('h3',{style:'margin-top:0'},'Gönderim kaydı (son 100)'),
       el('div',{class:'arac',style:'margin:0 0 8px'},el('button',{class:'b gri',onclick:logYenile},'Yenile')),logKutu)));
   await logYenile();
+};
+
+// =========================================================== BAĞLANTILAR (SQL Server + IFS kaynakları) VE GİZLİ AYARLAR
+function yonParola(baslik){
+  return new Promise(res=>{
+    const p=el('input',{type:'password',autocomplete:'new-password',placeholder:'Yönetici parolanız'});
+    let bitti=false;
+    const m=modal(baslik||'Yönetici parolası',el('div',null,el('div',{class:'sinir'},'Bu işlem için kendi (yönetici) parolanızı yeniden girin.'),p,
+      el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b yesil',onclick:()=>{bitti=true;m.kapat();res(p.value)}},'Tamam'))));
+    p.onkeydown=e=>{if(e.key==='Enter'){bitti=true;m.kapat();res(p.value)}};
+    new MutationObserver(()=>{if(!document.body.contains(m.ov)&&!bitti){bitti=true;res(null)}}).observe(document.body,{childList:true});
+    setTimeout(()=>p.focus(),50);
+  });
+}
+SAYFALAR.gizli=async function(k){
+  if(!ME.admin)throw new Error('Bu sayfa yalnızca yöneticiler içindir.');
+  const kutu=el('div');k.append(el('h2',null,'Gizli Ayarlar (şifreli)'),kutu);
+  async function ciz(){
+    kutu.innerHTML='';
+    const d=await api('/api/gizli/liste');
+    const hata=el('div');
+    kutu.append(el('div',{class:'sinir',style:'max-width:900px'},'Yapay zeka anahtarı, veritabanı yolu, SQL Server ve IFS bağlantı bilgileri bu şifreli dosyada tutulur; config dosyasında okunur hâlde bulunmaz. Dosya: ',el('code',null,d.dosya),
+      '. Dosya yalnız bu Windows kullanıcısı tarafından açılabilir; başka bilgisayara/kullanıcıya taşınırsa kurtarma parolası gerekir.'));
+    if(d.kilitli){
+      const kp=el('input',{type:'password',placeholder:'Kurtarma parolası'});
+      kutu.append(el('div',{class:'kart',style:'max-width:900px;border-left:4px solid #ef4444'},el('b',null,'🔒 Gizli ayar dosyası bu kullanıcıyla açılamıyor.'),
+        d.kurtarmaVar?el('div',null,el('div',{class:'sinir'},'Daha önce belirlediğiniz kurtarma parolasını girin.'),kp,
+          el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b yesil',onclick:async()=>{try{const j=await api('/api/gizli/kurtar',{yeni:kp.value});bildir(j.mesaj,'t');await ciz()}catch(e){bildir(e.message,'h')}}},'Aç'))):
+          el('div',{class:'hata'},'Kurtarma parolası tanımlı değil; dosya açılamaz. Ayarları yeniden girmeniz gerekir (dosyayı silip yeniden başlatın).')));
+      return;
+    }
+    const satirlar=el('tbody');
+    d.ayarlar.forEach(a=>{
+      const dg=el('td',{style:'font-family:monospace'},a.deger||'(boş)');
+      satirlar.append(el('tr',{style:'cursor:default'},el('td',null,el('b',null,a.anahtar),a.ic?el('span',{class:'et',style:'margin-left:6px'},'iç'):''),dg,
+        el('td',null,el('button',{class:'b gri',style:'padding:2px 10px',onclick:async()=>{const p=await yonParola();if(p==null)return;try{const j=await api('/api/gizli/goster',{anahtar:a.anahtar,parola:p});dg.textContent=j.deger||'(boş)';setTimeout(()=>{dg.textContent=a.deger||'(boş)'},15000)}catch(e){bildir(e.message,'h')}}},'Göster'),' ',
+          a.ic?'':el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>duzenle(a.anahtar)},'Değiştir'),' ',
+          el('button',{class:'b kirmizi',style:'padding:2px 10px',onclick:async()=>{if(!confirm(a.anahtar+' silinsin mi?'))return;const p=await yonParola();if(p==null)return;try{await api('/api/gizli/sil',{anahtar:a.anahtar,parola:p});await ciz()}catch(e){bildir(e.message,'h')}}},'Sil'))));
+    });
+    function duzenle(ad){
+      const an=el('input',{value:ad||'',placeholder:'Anahtar adı (örn. GeminiAnahtar)',readOnly:!!ad}),dv=el('input',{type:'password',autocomplete:'new-password',placeholder:'Yeni değer'});
+      const m=modal(ad?'Değiştir: '+ad:'Yeni gizli ayar',el('div',null,combo(an,['GeminiAnahtar','AnthropicAnahtar','VeritabaniYolu','GeminiModel','AnthropicModel','YZSaglayici']),el('div',{style:'height:6px'}),dv,
+        el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b yesil',onclick:async()=>{try{await api('/api/gizli/kaydet',{anahtar:an.value,deger:dv.value});m.kapat();await ciz()}catch(e){bildir(e.message,'h')}}},'Kaydet'))));
+    }
+    kutu.append(el('div',{class:'kart',style:'max-width:900px;margin-top:10px'},
+      el('div',{class:'tw'},el('table',null,el('thead',null,el('tr',null,el('th',null,'Anahtar'),el('th',null,'Değer (maskeli)'),el('th',null,''))),satirlar)),
+      el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b yesil',onclick:()=>duzenle('')},'+ Yeni gizli ayar'),
+        el('button',{class:'b gri',onclick:async()=>{const p=await yonParola();if(p==null)return;try{const j=await api('/api/gizli/tasi',{parola:p});bildir(j.mesaj,'t');await ciz()}catch(e){bildir(e.message,'h')}}},'Config\'teki değerleri buraya taşı'))),
+      el('div',{class:'kart',style:'max-width:900px;margin-top:10px'},el('h3',{style:'margin-top:0'},'Kurtarma parolası'),
+        el('div',{class:'sinir'},d.kurtarmaVar?'Tanımlı. Değiştirmek için yenisini girin.':'Tanımlı değil. Belirleyin: bilgisayar/Windows kullanıcısı değişirse ya da dosya başka yere taşınırsa bununla açarsınız. Unutulursa açılamaz; güvenli bir yere yazın.'),
+        (()=>{const y=el('input',{type:'password',autocomplete:'new-password',placeholder:'En az 8 karakter'});
+          return el('div',null,y,el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b yesil',onclick:async()=>{const p=await yonParola();if(p==null)return;try{const j=await api('/api/gizli/kurtarma',{yeni:y.value,parola:p});bildir(j.mesaj,'t');await ciz()}catch(e){bildir(e.message,'h')}}},'Kurtarma parolasını kaydet')))})()),hata);
+  }
+  await ciz();
+};
+
+SAYFALAR.baglanti=async function(k){
+  if(!ME.admin)throw new Error('Bu sayfa yalnızca yöneticiler içindir.');
+  k.append(el('h2',null,'Bağlantılar'));
+  const sqlKutu=el('div',{class:'kart',style:'max-width:960px'}),ifsKutu=el('div',{class:'kart',style:'max-width:960px;margin-top:12px'}),logKutu=el('div',{class:'kart',style:'max-width:960px;margin-top:12px'});
+  k.append(sqlKutu,ifsKutu,logKutu);
+  // ---------------- SQL Server
+  let zamanlayici=null;
+  async function sqlCiz(){
+    sqlKutu.innerHTML='';
+    const d=await api('/api/sqlsrv/durum');
+    const bag=el('input',{type:'password',autocomplete:'new-password',placeholder:d.baglantiVar?'Kayıtlı (değiştirmek için yenisini yazın)':'Server=SUNUCU;Database=KalipTakip;User Id=kullanici;Password=parola;'});
+    const mod=sel([{v:'tam',t:'Tam aktarım: tablolar + tüm veriler'},{v:'bos',t:'Boş kurulum: yalnız tablolar + yeni yönetici'}],'tam');
+    const uy=el('input',{type:'checkbox'});
+    const ya=el('input',{value:'ADMIN',placeholder:'Yönetici adı'}),yp=el('input',{type:'password',autocomplete:'new-password',placeholder:'Yönetici parolası (en az 4)'});
+    const yKutu=el('div',{style:'display:none'},el('div',{class:'alan'},el('div',null,el('label',null,'Yönetici adı'),ya),el('div',null,el('label',null,'Yönetici parolası'),yp)));
+    mod.onchange=()=>{yKutu.style.display=mod.value==='bos'?'':'none'};
+    const durum=el('div',{class:'sinir',style:'white-space:pre-wrap'},d.durum?d.durum+(d.rapor?'\n'+d.rapor:''):'');
+    sqlKutu.append(el('h3',{style:'margin-top:0'},'SQL Server veritabanı'),
+      el('div',{class:'sinir'},'Bağlantı cümlesi şifreli saklanır. Veritabanı yoksa aktarım sırasında oluşturulur (kullanıcının CREATE DATABASE yetkisi gerekir; yoksa BT\'den boş bir veritabanı isteyin). Aktarım SQLite dosyasına dokunmaz, yalnız okur. Şu sürümde uygulama SQLite ile çalışmaya devam eder; SQL Server\'a tam geçiş ayrı bir adımdır.'),
+      el('label',null,'Bağlantı cümlesi'),bag,
+      el('div',{class:'arac',style:'margin-top:8px'},
+        el('button',{class:'b gri',onclick:async()=>{try{const j=await api('/api/sqlsrv/test',{baglanti:bag.value});bildir('Bağlantı tamam. Sürüm: '+j.surum,'t')}catch(e){bildir(e.message,'h')}}},'Bağlantıyı dene'),
+        el('button',{class:'b yesil',onclick:async()=>{try{const j=await api('/api/sqlsrv/kaydet',{baglanti:bag.value});bildir(j.mesaj,'t');await sqlCiz()}catch(e){bildir(e.message,'h')}}},'Kaydet')),
+      d.baglantiVar?el('div',{style:'margin-top:12px'},el('h3',null,'Aktarım (SQLite → SQL Server)'),mod,
+        el('label',{style:'display:flex;align-items:center;margin-top:6px'},uy,'Hedefte aynı adlı tablolar varsa SİL ve üzerine yaz'),yKutu,
+        el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b yesil',onclick:async()=>{
+          if(!confirm(uy.checked?'Hedefteki aynı adlı tablolar silinip yeniden oluşturulacak. Devam?':'Aktarım başlasın mı?'))return;
+          const p=await yonParola();if(p==null)return;
+          try{await api('/api/sqlsrv/aktar',{mod:mod.value,uzerineYaz:uy.checked,yoneticiAd:ya.value,yoneticiParola:yp.value,parola:p});izle()}catch(e){bildir(e.message,'h')}}},'Aktarımı başlat')),durum):'');
+    if(d.calisiyor)izle();
+    function izle(){
+      clearInterval(zamanlayici);
+      zamanlayici=setInterval(async()=>{
+        if(!document.body.contains(sqlKutu)){clearInterval(zamanlayici);return}
+        try{const s=await api0('/api/sqlsrv/durum');durum.textContent=s.durum+(s.rapor?'\n'+s.rapor:'');if(!s.calisiyor){clearInterval(zamanlayici);bildir(s.hata?s.durum:'Aktarım bitti.',s.hata?'h':'t')}}catch(e){}
+      },1500);
+    }
+  }
+  // ---------------- IFS kaynakları
+  const ARALIK=[{v:'0',t:'Yalnız elle'},{v:'5',t:'5 dakikada bir'},{v:'15',t:'15 dakikada bir'},{v:'30',t:'30 dakikada bir'},{v:'60',t:'1 saatte bir'},{v:'180',t:'3 saatte bir'},{v:'360',t:'6 saatte bir'},{v:'1440',t:'Günde bir'}];
+  async function ifsCiz(){
+    ifsKutu.innerHTML='';
+    const d=await api('/api/vk/liste');
+    ifsKutu.append(el('h3',{style:'margin-top:0'},'IFS tabloları (veri çekme)'),
+      el('div',{class:'sinir'},'Her kaynak bir SELECT sorgusudur. Sonuç bu programda IFS_<ad> tablosuna yazılır; değişmeyen satırlar tekrar yazılmaz, bir hücresi değişen satır güncellenir. Kaynağa YAZILMAZ (yalnız okuma).'),
+      el('div',{class:'arac'},el('button',{class:'b yesil',onclick:()=>duzenle(null)},'+ Kaynak ekle'),
+        el('button',{class:'b gri',onclick:()=>cek('')},'⟳ Hepsini şimdi çek')));
+    if(!d.kaynaklar.length){ifsKutu.append(el('div',{class:'sinir'},'Henüz kaynak yok.'));return}
+    const tb=el('tbody');
+    d.kaynaklar.forEach(x=>tb.append(el('tr',{style:'cursor:default'},el('td',null,el('b',null,x.ad),el('div',{class:'sinir'},x.tur==='oracle'?'Oracle':'SQL Server')),el('td',null,x.tablo),
+      el('td',null,x.aktif?(x.aralikDk?ARALIK.find(a=>a.v==String(x.aralikDk))?.t||x.aralikDk+' dk':'Yalnız elle'):'Pasif'),
+      el('td',{style:'max-width:320px'},el('div',{class:'sinir'},(x.sonCalisma||'').slice(0,16),' ',x.sonSonuc||'')),
+      el('td',null,el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>cek(x.id)},'Çek'),' ',el('button',{class:'b gri',style:'padding:2px 10px',onclick:()=>duzenle(x)},'Düzenle'),' ',
+        el('button',{class:'b kirmizi',style:'padding:2px 10px',onclick:async()=>{if(!confirm(x.ad+' kaynağı silinsin mi? (yerel tablo kalır)'))return;try{await api('/api/vk/sil',{id:x.id});await ifsCiz()}catch(e){bildir(e.message,'h')}}},'Sil')))));
+    ifsKutu.append(el('div',{class:'tw'},el('table',null,el('thead',null,el('tr',null,['Kaynak','Yerel tablo','Otomatik','Son çalışma / sonuç',''].map(h=>el('th',null,h)))),tb)));
+  }
+  async function cek(id){
+    try{const j=await api('/api/vk/cek',{id});bildir(j.mesaj+(j.sonuclar.length?' '+j.sonuclar.map(s=>s.ad+': '+s.sonuc).join(' | '):''),j.sonuclar.some(s=>/^HATA/.test(s.sonuc))?'h':'t');await ifsCiz();await logCiz()}
+    catch(e){bildir(e.message,'h')}
+  }
+  function duzenle(x){
+    const yeni=!x;x=x||{tur:'oracle',aralikDk:0,aktif:true,silinenleriIsaretle:true};
+    const ad=el('input',{value:x.ad||'',placeholder:'örn. IFS Parça Listesi'}),tur=sel([{v:'oracle',t:'Oracle (IFS genelde bu)'},{v:'sqlserver',t:'SQL Server'}],x.tur);
+    const bag=el('input',{type:'password',autocomplete:'new-password',placeholder:x.baglantiVar?'Kayıtlı (değiştirmek için yenisini yazın)':'Oracle: User Id=kul;Password=par;Data Source=//sunucu:1521/IFSPROD   |   SQL Server: Server=..;Database=..;User Id=..;Password=..'});
+    const sorgu=el('textarea',{rows:6,placeholder:'SELECT ... FROM ...',style:'font-family:monospace'});sorgu.value=x.sorgu||'';
+    const anahtar=el('input',{value:x.anahtar||'',placeholder:'Satırı tanıtan sütun(lar), virgülle: örn. CONTRACT,PART_NO'}),hedef=el('input',{value:x.hedef||'',placeholder:'Yerel tablo adı (IFS_ öneki otomatik eklenir)'});
+    const aralik=sel(ARALIK,String(x.aralikDk||0)),aktif=el('input',{type:'checkbox',checked:!!x.aktif}),sil=el('input',{type:'checkbox',checked:!!x.silinenleriIsaretle});
+    const onizle=el('div');
+    const m=modal(yeni?'Yeni kaynak':'Kaynak: '+x.ad,el('div',null,
+      el('div',{class:'alan'},el('div',null,el('label',null,'Ad'),ad),el('div',null,el('label',null,'Tür'),tur)),
+      el('label',null,'Bağlantı cümlesi'),bag,el('label',null,'Sorgu (yalnız SELECT)'),sorgu,
+      el('div',{class:'alan'},el('div',null,el('label',null,'Anahtar sütun(lar)'),anahtar),el('div',null,el('label',null,'Yerel tablo adı'),hedef)),
+      el('div',{class:'alan'},el('div',null,el('label',null,'Otomatik çekme aralığı'),aralik),
+        el('div',null,el('label',{style:'display:flex;align-items:center'},aktif,'Otomatik çekme açık'),el('label',{style:'display:flex;align-items:center'},sil,'Kaynakta kalmayan satırları "silindi" işaretle'))),
+      el('div',{class:'arac',style:'margin-top:8px'},
+        el('button',{class:'b gri',onclick:async()=>{onizle.innerHTML='';try{const j=await api('/api/vk/test',{id:x.id,tur:tur.value,baglanti:bag.value,sorgu:sorgu.value});
+          onizle.append(el('div',{class:'sinir'},'Bağlantı tamam ('+j.surum+'). '+j.sutunlar.length+' sütun: '+j.sutunlar.join(', ')),tablo(j.sutunlar.map((s,i)=>({alan:'c'+i,baslik:s})),j.satirlar.map(r=>{const o={};r.forEach((v,i)=>o['c'+i]=v);return o}),{stil:'max-height:30vh'}))}catch(e){onizle.append(el('div',{class:'hata'},e.message))}}},'Dene (ilk 5 satır)'),
+        el('button',{class:'b yesil',onclick:async()=>{try{await api('/api/vk/kaydet',{id:x.id||'',ad:ad.value,tur:tur.value,baglanti:bag.value,sorgu:sorgu.value,anahtar:anahtar.value,hedef:hedef.value,aralikDk:aralik.value,aktif:aktif.checked,silinenleriIsaretle:sil.checked});m.kapat();await ifsCiz()}catch(e){onizle.innerHTML='';onizle.append(el('div',{class:'hata'},e.message))}}},'Kaydet')),onizle),true);
+  }
+  async function logCiz(){
+    logKutu.innerHTML='';
+    logKutu.append(el('h3',{style:'margin-top:0'},'Çekme günlüğü (son 100)'),el('div',{class:'arac',style:'margin:0 0 8px'},el('button',{class:'b gri',onclick:logCiz},'Yenile')));
+    try{const j=await api('/api/vk/gunluk');
+      logKutu.append(tablo([{alan:'Tarih',baslik:'Tarih'},{alan:'Ad',baslik:'Kaynak'},{alan:'Yeni',baslik:'Yeni'},{alan:'Degisen',baslik:'Değişen'},{alan:'Ayni',baslik:'Aynı'},{alan:'Silinen',baslik:'Kalmayan'},{alan:'Sure',baslik:'ms'},{alan:'Hata',baslik:'Hata'}],j.satirlar,{stil:'max-height:40vh'}))}
+    catch(e){logKutu.append(el('div',{class:'hata'},e.message))}
+  }
+  await sqlCiz();await ifsCiz();await logCiz();
 };
 
 // =========================================================== KALIP - BÖLÜM ATAMASI

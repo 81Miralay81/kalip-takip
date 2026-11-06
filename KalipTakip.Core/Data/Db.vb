@@ -27,6 +27,9 @@ Public NotInheritable Class Db
 
     Private Shared _yol As String
 
+    ''' <summary>Gizli ayar kaynağı (örn. şifreli depo). Verilirse VeritabaniYolu önce buradan okunur; boşsa .config'e bakılır.</summary>
+    Public Shared Property AyarOkuyucu As Func(Of String, String)
+
     Shared Sub New()
         Try
             SQLiteFunction.RegisterFunction(GetType(KatlaFonksiyonu))
@@ -38,7 +41,14 @@ Public NotInheritable Class Db
     Public Shared ReadOnly Property Yol As String
         Get
             If _yol Is Nothing Then
-                Dim ayar As String = ConfigurationManager.AppSettings("VeritabaniYolu")
+                Dim ayar As String = Nothing
+                If AyarOkuyucu IsNot Nothing Then
+                    Try
+                        ayar = AyarOkuyucu("VeritabaniYolu")
+                    Catch
+                    End Try
+                End If
+                If String.IsNullOrWhiteSpace(ayar) Then ayar = ConfigurationManager.AppSettings("VeritabaniYolu")
                 Dim temel As String = AppDomain.CurrentDomain.BaseDirectory
                 If String.IsNullOrWhiteSpace(ayar) Then
                     _yol = Path.Combine(temel, "KalipTakip.db")

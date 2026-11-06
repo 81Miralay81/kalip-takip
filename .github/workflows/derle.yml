@@ -12,6 +12,13 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Derle (Release)
         run: dotnet build KalipTakip.sln -c Release
+      - name: SQL Server sinamasi (LocalDB)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          & "KalipTakip.Sunucu/bin/Release/net48/KalipTakipSunucu.exe" --sinama "Server=(localdb)\MSSQLLocalDB;Integrated Security=true;Initial Catalog=master"
+          if ($LASTEXITCODE -ne 0) { throw "Sinama basarisiz" }
       - name: Paketler
         shell: pwsh
         run: |

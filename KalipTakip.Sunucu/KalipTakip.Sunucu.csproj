@@ -14,8 +14,10 @@
 
   <ItemGroup>
     <Reference Include="System.Configuration" />
+    <Reference Include="System.Security" />
     <Reference Include="System.Web.Extensions" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
+    <PackageReference Include="Oracle.ManagedDataAccess" Version="21.15.0" />
     <ProjectReference Include="..\KalipTakip.Core\KalipTakip.Core.vbproj" />
   </ItemGroup>
 
