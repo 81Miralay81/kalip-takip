@@ -91,3 +91,9 @@ SÜRÜM Z17 (06.11.2026)
 - Güvenlik: ilk kullanımda "Temel al" (IFS'e yazmadan şimdiki durumu kaydeder) ya da "Tümünü gönder" yapın; sonra yalnız değişenler gider.
   Yazma yetkisi olan IFS kullanıcısı gerekir (BT'den isteyin). Hata olursa satır sonraki turda yeniden denenir; günlükte görünür.
 - Veri çekme (IFS->bizde) ve gönderme (bizde->IFS) ayrıdır; "⟳ Veri çek" yalnız IFS'ten okur.
+
+SÜRÜM Z18 (06.11.2026)
+- Portal > IFS Tablo Kontrol (yönetici): her IFS kaynağı için sekmeler. "⬇ çekilen": IFS'ten çekilip bizde tutulan tablo (arama, sayfalama,
+  kaynakta kalmayan satırlar işaretli, "IFS'ten şimdi çek"). "⬆ IFS canlı": yazma tablosunun IFS'teki gerçek hâli (ilk 300 satır, Yenile ile tekrar okunur).
+  "Bizde olup IFS'te olmayan kalıplar": kalıp kodlarımızdan IFS tablosunda bulunmayanları listeler; kopyalayıp IT'ye gönderebilirsiniz.
+- Tüm tablolar CSV olarak indirilebilir (Excel'de açılır). Yalnız okuma yapılır.

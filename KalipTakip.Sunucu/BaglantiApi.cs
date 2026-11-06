@@ -158,6 +158,23 @@ namespace KalipTakip.Sunucu
                         Json(ctx, 200, new { mesaj = ozet, hata = ozet.StartsWith("HATA") });
                     }
                     return true;
+                case "/api/vk/veri":
+                    g = Govde(ctx);
+                    {
+                        VkTanim t = Vk.Liste().FirstOrDefault(x => x.id == Metin(g, "id"));
+                        if (t == null) throw new ArgumentException("Kaynak bulunamadı.");
+                        int sayfa = 1, adet = 100; int.TryParse(Metin(g, "sayfa"), out sayfa); int.TryParse(Metin(g, "adet"), out adet);
+                        Vk.VeriSayfa v = Metin(g, "tablo") == "canli" ? Vk.CanliVeri(t, adet) : Vk.YerelVeri(t, Metin(g, "q"), Dogru(g, "silinenler"), sayfa, adet);
+                        Json(ctx, 200, new { sutunlar = v.Sutunlar, satirlar = v.Satirlar, toplam = v.Toplam, uyari = v.Not });
+                    }
+                    return true;
+                case "/api/vk/eksik":
+                    {
+                        VkTanim t = Vk.Liste().FirstOrDefault(x => x.id == Metin(Govde(ctx), "id"));
+                        if (t == null) throw new ArgumentException("Kaynak bulunamadı.");
+                        Json(ctx, 200, Vk.Eksikler(t));
+                    }
+                    return true;
                 case "/api/vk/gunluk":
                     {
                         DataTable dt = Vk.Gunluk(100);

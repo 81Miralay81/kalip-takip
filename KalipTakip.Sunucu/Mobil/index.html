@@ -161,7 +161,7 @@ button.b{min-height:42px;padding:9px 12px}
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const SURUM='06.11.2026-Z17';
+const SURUM='06.11.2026-Z18';
 let T=localStorage.getItem('kt_token'), ME=null;
 
 function el(tag,props,...kids){
@@ -725,7 +725,7 @@ function sayfaYetkisi(ad){
     case 'talep':return izin('talep_gor');
     case 'atama':return izin('kl_ekle');
     case 'hizli':return izin('kl_ekle')||izin('talep_kalip_durum');
-    case 'turler':case 'kul':case 'lok':case 'bildirim':case 'cihaz':case 'gizli':case 'baglanti':return false;
+    case 'turler':case 'kul':case 'lok':case 'bildirim':case 'cihaz':case 'gizli':case 'baglanti':case 'ifsgor':return false;
     default:return true;
   }
 }
@@ -754,6 +754,7 @@ SAYFALAR.portal=function(k){
     ['Kullanıcılar','Kullanıcı, bölüm ve yetki yönetimi','kul','linear-gradient(135deg,#10b981,#0d9488)',ME.admin],
     ['Bölümler ve Lokasyonlar','Bölüm, ana ve alt lokasyonlar','lok','linear-gradient(135deg,#3b82f6,#06b6d4)',ME.admin],
     ['Bildirim Ayarları','Telegram ve e-posta bildirimleri; gönderim kaydı','bildirim','linear-gradient(135deg,#ec4899,#8b5cf6)',ME.admin],
+    ['IFS Tablo Kontrol','IFS tablolarını ayrı ayrı izle: çekilen veri, IFS\'teki canlı tablo, eksik kalıplar','ifsgor','linear-gradient(135deg,#f59e0b,#0ea5e9)',ME.admin],
     ['Bağlantılar','SQL Server aktarımı; IFS tablolarından otomatik veri çekme','baglanti','linear-gradient(135deg,#0ea5e9,#6366f1)',ME.admin],
     ['Gizli Ayarlar','Şifreli ayarlar: API anahtarı, veritabanı yolu, bağlantı bilgileri','gizli','linear-gradient(135deg,#64748b,#0f172a)',ME.admin],
     ['Cihaz Erişimleri','Hangi telefon / bilgisayar giriş yapabilir: onay, ret, kontrol','cihaz','linear-gradient(135deg,#ef4444,#7c3aed)',ME.admin]
@@ -2120,6 +2121,69 @@ SAYFALAR.baglanti=async function(k){
     catch(e){logKutu.append(el('div',{class:'hata'},e.message))}
   }
   await sqlCiz();await ifsCiz();await logCiz();
+};
+
+// =========================================================== IFS TABLO KONTROL (veri görüntüleme)
+SAYFALAR.ifsgor=async function(k){
+  if(!ME.admin)throw new Error('Bu sayfa yalnızca yöneticiler içindir.');
+  const d=await api('/api/vk/liste');
+  k.append(el('h2',null,'IFS Tablo Kontrol'));
+  if(!d.kaynaklar.length){k.append(el('div',{class:'sinir'},'Önce Bağlantılar sayfasından bir IFS kaynağı ekleyin.'));return}
+  const sekmeler=[];
+  d.kaynaklar.forEach(x=>{
+    if(x.okuma)sekmeler.push({ad:'⬇ '+x.ad+' (çekilen)',x,tur:'yerel'});
+    if(x.yazTablo)sekmeler.push({ad:'⬆ '+x.yazTablo+' (IFS canlı)',x,tur:'canli'});
+  });
+  const bar=el('div',{class:'arac',style:'flex-wrap:wrap'}),govde=el('div');
+  k.append(bar,govde);
+  let aktif=0;
+  function barCiz(){bar.innerHTML='';sekmeler.forEach((s,i)=>bar.append(el('button',{class:'b '+(i===aktif?'yesil':'gri'),onclick:()=>{aktif=i;barCiz();ciz()}},s.ad)))}
+  async function ciz(){
+    govde.innerHTML='';
+    const s=sekmeler[aktif];if(!s)return;
+    const q=el('input',{placeholder:s.tur==='yerel'?'Ara (tüm sütunlarda; boşlukla birden çok sözcük)':'(canlı tabloda arama için aşağıdaki kutuyu kullanın)',style:'flex:1'});
+    const sil=el('input',{type:'checkbox'});
+    let sayfa=1;const adet=100;
+    const ozet=el('div',{class:'sinir'}),liste=el('div');let sonSut=[],sonSat=[];
+    async function yukle(){
+      liste.innerHTML='';ozet.textContent='';
+      try{
+        const j=await api('/api/vk/veri',{id:s.x.id,tablo:s.tur,q:q.value,silinenler:sil.checked,sayfa,adet});
+        sonSut=j.sutunlar;sonSat=j.satirlar;
+        if(j.uyari&&!j.satirlar.length){liste.append(el('div',{class:'sinir'},j.uyari));return}
+        let t=j.satirlar;
+        if(s.tur==='canli'&&q.value.trim()){const w=q.value.trim().toLocaleLowerCase('tr');t=t.filter(r=>r.some(v=>v!=null&&String(v).toLocaleLowerCase('tr').includes(w)))}
+        ozet.textContent=(s.tur==='yerel'?j.toplam+' satır  •  sayfa '+sayfa+' / '+Math.max(1,Math.ceil(j.toplam/adet)):t.length+' satır gösteriliyor')+(j.uyari?'  •  '+j.uyari:'');
+        liste.append(tablo(j.sutunlar.map((c,i)=>({alan:'c'+i,baslik:c})),t.map(r=>{const o={};r.forEach((v,i)=>o['c'+i]=v==null?'':v);return o}),{stil:'max-height:62vh'}));
+      }catch(e){liste.append(el('div',{class:'hata'},e.message))}
+    }
+    function csv(){
+      const kac=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+      const m=[sonSut.map(kac).join(';')].concat(sonSat.map(r=>r.map(kac).join(';'))).join('\r\n');
+      const a=el('a',{href:URL.createObjectURL(new Blob(['﻿'+m],{type:'text/csv;charset=utf-8'})),download:(s.tur==='yerel'?'IFS_'+s.x.hedef:s.x.yazTablo)+'.csv'});document.body.append(a);a.click();a.remove();
+    }
+    q.onkeydown=e=>{if(e.key==='Enter'){sayfa=1;yukle()}};
+    const araclar=[q];
+    if(s.tur==='yerel')araclar.push(el('label',{style:'display:flex;align-items:center;white-space:nowrap'},sil,'Kaynakta olmayanlar da'));
+    araclar.push(el('button',{class:'b yesil',onclick:()=>{sayfa=1;return yukle()}},s.tur==='canli'?'Yenile (IFS\'ten oku)':'Ara'),
+      el('button',{class:'b gri',onclick:csv},'CSV indir'));
+    govde.append(el('div',{class:'arac'},araclar));
+    if(s.tur==='yerel')govde.append(el('div',{class:'arac'},
+      el('button',{class:'b gri',onclick:()=>{if(sayfa>1){sayfa--;return yukle()}}},'◀ Önceki'),el('button',{class:'b gri',onclick:()=>{sayfa++;return yukle()}},'Sonraki ▶'),
+      el('button',{class:'b gri',onclick:async()=>{try{const j=await api('/api/vk/cek',{id:s.x.id});bildir(j.sonuclar.map(r=>r.ad+': '+r.sonuc).join(' | ')||j.mesaj,'t');sayfa=1;await yukle()}catch(e){bildir(e.message,'h')}}},'⟳ IFS\'ten şimdi çek')));
+    else govde.append(el('div',{class:'arac'},el('button',{class:'b gri',onclick:async()=>{
+      try{
+        const j=await api('/api/vk/eksik',{id:s.x.id});
+        const metin=j.eksik.join('\n');
+        const ta=el('textarea',{rows:12,readOnly:true,style:'font-family:monospace'});ta.value=metin;
+        modal('IFS tablosunda olmayan kalıplar',el('div',null,el('div',{class:'sinir'},'Bizde '+j.bizde+' kalıp, IFS tablosunda '+j.ifste+' kayıt var. IFS\'te bulunmayan: '+j.eksikSayi+(j.eksikSayi>=2000?' (ilk 2000)':'')+'.'),
+          j.eksikSayi?ta:el('div',{class:'sinir'},'Eksik yok.'),
+          j.eksikSayi?el('div',{class:'arac',style:'margin-top:8px'},el('button',{class:'b yesil',onclick:()=>{ta.select();try{navigator.clipboard.writeText(metin)}catch(e){document.execCommand('copy')}bildir('Kopyalandı — IT\'ye iletebilirsiniz.','t')}},'Listeyi kopyala')):''),true);
+      }catch(e){bildir(e.message,'h')}}},'Bizde olup IFS\'te olmayan kalıplar')));
+    govde.append(ozet,liste);
+    await yukle();
+  }
+  barCiz();await ciz();
 };
 
 // =========================================================== KALIP - BÖLÜM ATAMASI
